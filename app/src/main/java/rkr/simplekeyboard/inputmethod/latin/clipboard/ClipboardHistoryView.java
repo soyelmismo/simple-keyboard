@@ -224,7 +224,7 @@ public class ClipboardHistoryView extends LinearLayout {
     public void reloadClips() {
         if (mDatabase == null) return;
         final Context context = getContext();
-        android.content.SharedPreferences prefs = android.preference.PreferenceManager.getDefaultSharedPreferences(context);
+        android.content.SharedPreferences prefs = rkr.simplekeyboard.inputmethod.compat.PreferenceManagerCompat.getDeviceSharedPreferences(context);
         String val = prefs.getString(rkr.simplekeyboard.inputmethod.latin.settings.Settings.PREF_CLIPBOARD_RETENTION_TIME, "1440");
         long tempRetention = 1440L;
         try {

@@ -18,6 +18,7 @@
 
 package rkr.simplekeyboard.inputmethod.latin.settings;
 
+import android.app.AlertDialog;
 import android.content.Context;
 import android.os.Bundle;
 import android.preference.Preference;
@@ -25,12 +26,19 @@ import android.preference.PreferenceCategory;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceGroup;
 import android.preference.SwitchPreference;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
 import rkr.simplekeyboard.inputmethod.R;
+import rkr.simplekeyboard.inputmethod.compat.MenuItemIconColorCompat;
 import rkr.simplekeyboard.inputmethod.latin.Subtype;
 import rkr.simplekeyboard.inputmethod.latin.RichInputMethodManager;
 import rkr.simplekeyboard.inputmethod.latin.utils.LocaleResourceUtils;
@@ -45,14 +53,24 @@ public final class SingleLanguageSettingsFragment extends PreferenceFragment {
 
     private RichInputMethodManager mRichImm;
     private List<SubtypePreference> mSubtypePreferences;
+    private String mLocale;
+    private View mView;
 
     @Override
     public void onCreate(final Bundle icicle) {
         super.onCreate(icicle);
 
+        setHasOptionsMenu(true);
         RichInputMethodManager.init(getActivity());
         mRichImm = RichInputMethodManager.getInstance();
         addPreferencesFromResource(R.xml.empty_settings);
+    }
+
+    @Override
+    public View onCreateView(final LayoutInflater inflater, final ViewGroup container,
+                             final Bundle savedInstanceState) {
+        mView = super.onCreateView(inflater, container, savedInstanceState);
+        return mView;
     }
 
     @Override
@@ -61,11 +79,69 @@ public final class SingleLanguageSettingsFragment extends PreferenceFragment {
 
         final Bundle args = getArguments();
         if (args != null) {
-            final String locale = getArguments().getString(LOCALE_BUNDLE_KEY);
-            buildContent(locale, context);
+            mLocale = args.getString(LOCALE_BUNDLE_KEY);
+            buildContent(mLocale, context);
         }
 
         super.onActivityCreated(savedInstanceState);
+    }
+
+    @Override
+    public void onCreateOptionsMenu(final Menu menu, final MenuInflater inflater) {
+        inflater.inflate(R.menu.remove_language, menu);
+        MenuItem removeLanguageMenuItem = menu.findItem(R.id.action_remove_language);
+        if (removeLanguageMenuItem != null && getActivity() != null && getActivity().getActionBar() != null) {
+            MenuItemIconColorCompat.matchMenuIconColor(mView, removeLanguageMenuItem,
+                    getActivity().getActionBar());
+        }
+    }
+
+    @Override
+    public void onPrepareOptionsMenu(final Menu menu) {
+        if (mLocale != null && menu.findItem(R.id.action_remove_language) != null) {
+            final Set<Subtype> allSubtypes = mRichImm.getEnabledSubtypes(false);
+            final Set<Subtype> currentLocaleSubtypes = mRichImm.getEnabledSubtypesForLocale(mLocale);
+            menu.findItem(R.id.action_remove_language).setVisible(allSubtypes.size() > currentLocaleSubtypes.size());
+        }
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(final MenuItem item) {
+        if (item.getItemId() == R.id.action_remove_language) {
+            confirmAndRemoveLanguage();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void confirmAndRemoveLanguage() {
+        if (mLocale == null || getActivity() == null) return;
+        final Set<Subtype> allSubtypes = mRichImm.getEnabledSubtypes(false);
+        final Set<Subtype> currentLocaleSubtypes = mRichImm.getEnabledSubtypesForLocale(mLocale);
+
+        if (allSubtypes.size() <= currentLocaleSubtypes.size()) {
+            new AlertDialog.Builder(getActivity())
+                    .setTitle(R.string.remove_language)
+                    .setMessage(R.string.remove_language)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show();
+            return;
+        }
+
+        final String localeName = LocaleResourceUtils.getLocaleDisplayNameInSystemLocale(mLocale);
+        new AlertDialog.Builder(getActivity())
+                .setTitle(R.string.remove_language)
+                .setMessage(localeName)
+                .setPositiveButton(R.string.clipboard_delete, (dialog, which) -> {
+                    for (final Subtype subtype : currentLocaleSubtypes) {
+                        mRichImm.removeSubtype(subtype);
+                    }
+                    if (getActivity() != null) {
+                        getActivity().onBackPressed();
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     /**
@@ -86,6 +162,22 @@ public final class SingleLanguageSettingsFragment extends PreferenceFragment {
         group.addPreference(mainCategory);
 
         buildSubtypePreferences(locale, group, context);
+
+        final Set<Subtype> allSubtypes = mRichImm.getEnabledSubtypes(false);
+        final Set<Subtype> currentLocaleSubtypes = mRichImm.getEnabledSubtypesForLocale(locale);
+        if (allSubtypes.size() > currentLocaleSubtypes.size()) {
+            final PreferenceCategory actionCategory = new PreferenceCategory(context);
+            group.addPreference(actionCategory);
+
+            final Preference removePref = new Preference(context);
+            removePref.setTitle(R.string.remove_language);
+            removePref.setIcon(R.drawable.ic_delete);
+            removePref.setOnPreferenceClickListener(preference -> {
+                confirmAndRemoveLanguage();
+                return true;
+            });
+            group.addPreference(removePref);
+        }
     }
 
     /**
