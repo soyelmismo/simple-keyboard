@@ -261,6 +261,36 @@ public final class RichInputConnection {
         return mTextSelection;
     }
 
+    public String getWordBeforeCursor() {
+        String text = mTextBeforeCursor;
+        if ((text == null || text.isEmpty()) && isConnected()) {
+            final CharSequence icText = mIC.getTextBeforeCursor(30, 0);
+            if (icText != null) {
+                text = icText.toString();
+            }
+        }
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        int i = text.length() - 1;
+        while (i >= 0) {
+            char c = text.charAt(i);
+            if (Character.isWhitespace(c) || !Character.isLetterOrDigit(c)) {
+                break;
+            }
+            i--;
+        }
+        return text.substring(i + 1);
+    }
+
+    public void commitSuggestion(final CharSequence suggestion) {
+        final String currentWord = getWordBeforeCursor();
+        if (!currentWord.isEmpty()) {
+            deleteTextBeforeCursor(currentWord.length());
+        }
+        commitText(suggestion.toString() + " ", 1);
+    }
+
     public boolean canDeleteCharacters() {
         return mExpectedSelStart > 0;
     }

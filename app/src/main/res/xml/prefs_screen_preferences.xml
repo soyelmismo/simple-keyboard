@@ -58,4 +58,15 @@
         android:entries="@array/clipboard_retention_entries"
         android:entryValues="@array/clipboard_retention_values"
         android:defaultValue="1440" />
+    <SwitchPreference
+        android:key="pref_show_suggestions"
+        android:title="@string/show_suggestions"
+        android:defaultValue="true"
+        android:persistent="true" />
+    <SwitchPreference
+        android:key="pref_auto_correction"
+        android:title="@string/auto_correction"
+        android:summary="@string/auto_correction_summary"
+        android:defaultValue="false"
+        android:persistent="true" />
 </PreferenceScreen>

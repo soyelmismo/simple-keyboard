@@ -3,5 +3,6 @@ package rkr.simplekeyboard.inputmethod.latin.topbar;
 public interface TopBarListener {
     void onSettingsClicked();
     void onLanguageClicked();
-    void onClipboardClicked();
+    void onClipboardTextClicked(CharSequence text);
+    void onSuggestionClicked(CharSequence text);
 }

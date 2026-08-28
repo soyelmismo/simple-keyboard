@@ -61,16 +61,12 @@ import rkr.simplekeyboard.inputmethod.keyboard.KeyboardActionListener;
 import rkr.simplekeyboard.inputmethod.keyboard.KeyboardId;
 import rkr.simplekeyboard.inputmethod.keyboard.KeyboardSwitcher;
 import rkr.simplekeyboard.inputmethod.keyboard.MainKeyboardView;
-import rkr.simplekeyboard.inputmethod.latin.clipboard.ClipboardHistoryManager;
-import rkr.simplekeyboard.inputmethod.latin.clipboard.ClipboardHistoryView;
 import rkr.simplekeyboard.inputmethod.latin.common.Constants;
 import rkr.simplekeyboard.inputmethod.latin.define.DebugFlags;
 import rkr.simplekeyboard.inputmethod.latin.inputlogic.InputLogic;
 import rkr.simplekeyboard.inputmethod.latin.settings.Settings;
 import rkr.simplekeyboard.inputmethod.latin.settings.SettingsActivity;
 import rkr.simplekeyboard.inputmethod.latin.settings.SettingsValues;
-import rkr.simplekeyboard.inputmethod.latin.topbar.TopBarListener;
-import rkr.simplekeyboard.inputmethod.latin.topbar.TopBarView;
 import rkr.simplekeyboard.inputmethod.latin.utils.ApplicationUtils;
 import rkr.simplekeyboard.inputmethod.latin.utils.LeakGuardHandlerWrapper;
 import rkr.simplekeyboard.inputmethod.latin.utils.ResourceUtils;
@@ -93,11 +89,13 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     private Locale mLocale;
     final InputLogic mInputLogic = new InputLogic(this /* LatinIME */);
 
+    private final rkr.simplekeyboard.inputmethod.latin.dict.PrefixDictionary mPrefixDictionary =
+            new rkr.simplekeyboard.inputmethod.latin.dict.PrefixDictionary();
+    private rkr.simplekeyboard.inputmethod.latin.topbar.TopBarView mTopBarView;
+    private Locale mLoadedLocale;
+
     // TODO: Move these {@link View}s to {@link KeyboardSwitcher}.
     private View mInputView;
-    private TopBarView mTopBarView;
-    private ClipboardHistoryView mClipboardHistoryView;
-    private ClipboardHistoryManager mClipboardHistoryManager;
 
     private RichInputMethodManager mRichImm;
     final KeyboardSwitcher mKeyboardSwitcher;
@@ -267,9 +265,6 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         AudioAndHapticFeedbackManager.init(this);
         super.onCreate();
 
-        mClipboardHistoryManager = new ClipboardHistoryManager(this);
-        mClipboardHistoryManager.start();
-
         // TODO: Resolve mutual dependencies of {@link #loadSettings()} and
         // {@link #resetDictionaryFacilitatorIfNecessary()}.
         loadSettings();
@@ -285,17 +280,13 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         final EditorInfo editorInfo = getCurrentInputEditorInfo();
         final InputAttributes inputAttributes = new InputAttributes(editorInfo, isFullscreenMode());
         mSettings.loadSettings(inputAttributes);
-        rkr.simplekeyboard.inputmethod.keyboard.KeyboardLayoutSet.clearKeyboardCache();
         final SettingsValues currentSettingsValues = mSettings.getCurrent();
         AudioAndHapticFeedbackManager.getInstance().onSettingsChanged(currentSettingsValues);
+        loadDictionaryForLocale(mLocale);
     }
 
     @Override
     public void onDestroy() {
-        if (mClipboardHistoryManager != null) {
-            mClipboardHistoryManager.close();
-            mClipboardHistoryManager = null;
-        }
         mSettings.onDestroy();
         unregisterReceiver(mRingerModeChangeReceiver);
         super.onDestroy();
@@ -347,10 +338,9 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
 
         if (mInputView != null) {
             mTopBarView = mInputView.findViewById(rkr.simplekeyboard.inputmethod.R.id.top_bar_view);
-            mClipboardHistoryView = mInputView.findViewById(rkr.simplekeyboard.inputmethod.R.id.clipboard_history_view);
-
             if (mTopBarView != null) {
-                mTopBarView.setListener(new TopBarListener() {
+                loadDictionaryForLocale(mLocale);
+                mTopBarView.setListener(new rkr.simplekeyboard.inputmethod.latin.topbar.TopBarListener() {
                     @Override
                     public void onSettingsClicked() {
                         launchSettings();
@@ -362,75 +352,17 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                     }
 
                     @Override
-                    public void onClipboardClicked() {
-                        showClipboardHistory();
-                    }
-                });
-            }
-
-            if (mClipboardHistoryView != null) {
-                mClipboardHistoryView.setListener(new ClipboardHistoryView.ClipboardHistoryListener() {
-                    @Override
-                    public void onPasteText(CharSequence text) {
+                    public void onClipboardTextClicked(CharSequence text) {
                         mInputLogic.mConnection.commitText(text, 1);
-                        hideClipboardHistory();
                     }
 
                     @Override
-                    public void onCloseClipboard() {
-                        hideClipboardHistory();
+                    public void onSuggestionClicked(CharSequence text) {
+                        mInputLogic.mConnection.commitSuggestion(text);
+                        updateSuggestions();
                     }
                 });
             }
-        }
-    }
-
-    public void showClipboardHistory() {
-        if (mClipboardHistoryView == null || mInputView == null) {
-            return;
-        }
-        if (mClipboardHistoryManager != null) {
-            mClipboardHistoryManager.updateCurrentClip();
-            mClipboardHistoryView.setDatabase(mClipboardHistoryManager.getDatabase());
-        }
-        final int topBarHeight = (mTopBarView != null && mTopBarView.getVisibility() == View.VISIBLE) ? mTopBarView.getHeight() : 0;
-        final View visibleKeyboardView = mKeyboardSwitcher.getVisibleKeyboardView();
-        final int keyboardHeight = (visibleKeyboardView != null && visibleKeyboardView.getVisibility() == View.VISIBLE) ? visibleKeyboardView.getHeight() : 0;
-        final int totalHeight = topBarHeight + keyboardHeight;
-        if (totalHeight > 0) {
-            mClipboardHistoryView.setTargetHeight(totalHeight);
-        }
-
-        if (mTopBarView != null) {
-            mTopBarView.setVisibility(View.GONE);
-        }
-        if (visibleKeyboardView != null) {
-            visibleKeyboardView.setVisibility(View.GONE);
-        }
-
-        mClipboardHistoryView.reloadClips();
-        mClipboardHistoryView.setVisibility(View.VISIBLE);
-        mInputView.requestLayout();
-    }
-
-    public void hideClipboardHistory() {
-        if (mClipboardHistoryView != null && mClipboardHistoryView.getVisibility() == View.VISIBLE) {
-            mClipboardHistoryView.setVisibility(View.GONE);
-        }
-        if (mTopBarView != null) {
-            mTopBarView.setVisibility(View.VISIBLE);
-            mTopBarView.setMode(TopBarView.MODE_NORMAL);
-        }
-        final View keyboardView = mKeyboardSwitcher.getMainKeyboardView();
-        if (keyboardView != null) {
-            final SettingsValues currentSettingsValues = mSettings.getCurrent();
-            final KeyboardSwitcher switcher = mKeyboardSwitcher;
-            final int visibility = switcher.isImeSuppressedByHardwareKeyboard(currentSettingsValues, switcher.getKeyboardSwitchState())
-                    ? View.GONE : View.VISIBLE;
-            keyboardView.setVisibility(visibility);
-        }
-        if (mInputView != null) {
-            mInputView.requestLayout();
         }
     }
 
@@ -469,6 +401,15 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
 
     void onStartInputInternal(final EditorInfo editorInfo, final boolean restarting) {
         super.onStartInput(editorInfo, restarting);
+
+        // If the primary hint language does not match the current subtype language, then try
+        // to switch to the primary hint language.
+        // TODO: Support all the locales in EditorInfo#hintLocales.
+        final Locale primaryHintLocale = EditorInfoCompatUtils.getPrimaryHintLocale(editorInfo);
+        if (primaryHintLocale == null) {
+            return;
+        }
+        mRichImm.setCurrentSubtype(primaryHintLocale);
     }
 
     void onStartInputViewInternal(final EditorInfo editorInfo, final boolean restarting) {
@@ -536,22 +477,24 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             mInputLogic.mConnection.reloadTextCache(editorInfo, restarting);
         }
 
-        loadSettings();
-        currentSettingsValues = mSettings.getCurrent();
-        mainKeyboardView.closing();
-        switcher.loadKeyboard(editorInfo, currentSettingsValues, getCurrentAutoCapsState(),
-                getCurrentRecapitalizeState());
+        if (isDifferentTextField ||
+                !currentSettingsValues.hasSameOrientation(getResources().getConfiguration())) {
+            loadSettings();
+        }
+        if (isDifferentTextField) {
+            mainKeyboardView.closing();
+            currentSettingsValues = mSettings.getCurrent();
 
-        if (mTopBarView != null) {
-            mTopBarView.setLanguageButtonVisible(shouldShowLanguageSwitchKey());
+            switcher.loadKeyboard(editorInfo, currentSettingsValues, getCurrentAutoCapsState(),
+                    getCurrentRecapitalizeState());
+        } else {
+            // TODO: Come up with a more comprehensive way to reset the keyboard layout when
+            // a keyboard layout set doesn't get reloaded in this method.
+            switcher.resetKeyboardStateToAlphabet(getCurrentAutoCapsState(),
+                    getCurrentRecapitalizeState());
         }
 
         if (TRACE) Debug.startMethodTracing("/data/trace/latinime");
-
-        if (mClipboardHistoryManager != null) {
-            mClipboardHistoryManager.updateCurrentClip();
-        }
-        hideClipboardHistory();
     }
 
     @Override
@@ -564,7 +507,6 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     @Override
     public void onWindowHidden() {
         super.onWindowHidden();
-        hideClipboardHistory();
         final MainKeyboardView mainKeyboardView = mKeyboardSwitcher.getMainKeyboardView();
         if (mainKeyboardView != null) {
             mainKeyboardView.closing();
@@ -581,7 +523,6 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     }
 
     void onFinishInputViewInternal(final boolean finishingInput) {
-        hideClipboardHistory();
         super.onFinishInputView(finishingInput);
     }
 
@@ -595,9 +536,6 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     }
 
     protected void deallocateMemory() {
-        if (mClipboardHistoryView != null) {
-            mClipboardHistoryView.deallocateMemory();
-        }
         mKeyboardSwitcher.deallocateMemory();
     }
 
@@ -620,7 +558,89 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
 
             mKeyboardSwitcher.requestUpdatingShiftState(getCurrentAutoCapsState(),
                     getCurrentRecapitalizeState());
+            updateSuggestions();
         }
+    }
+
+    private void loadDictionaryForLocale(final Locale locale) {
+        if (locale != null && locale.equals(mLoadedLocale) && mPrefixDictionary.getWordCount() > 0) {
+            return;
+        }
+        mLoadedLocale = locale;
+        mPrefixDictionary.clear();
+
+        final String lang = locale != null ? locale.getLanguage() : "es";
+
+        if ("es".equals(lang)) {
+            final String[] spanishWords = {
+                "de", "la", "que", "el", "en", "y", "a", "los", "se", "del", "las", "un", "por", "con", "no", "una",
+                "su", "para", "es", "al", "lo", "como", "más", "pero", "sus", "le", "ya", "o", "este", "sí", "porque",
+                "esta", "son", "entre", "cuando", "muy", "sin", "sobre", "también", "me", "hasta", "hay", "donde",
+                "quien", "desde", "todo", "nos", "durante", "todos", "uno", "les", "ni", "contra", "otros", "ese",
+                "eso", "ante", "ellos", "e", "esto", "mí", "antes", "algunos", "qué", "unos", "yo", "otro", "otras",
+                "otra", "él", "tanto", "esa", "estos", "mucho", "quienes", "nada", "muchos", "cual", "sea", "poco",
+                "ella", "estar", "haber", "estas", "estaba", "estamos", "están", "estoy", "bueno", "buena", "buenos",
+                "buenas", "hola", "chau", "gracias", "amigo", "amiga", "casa", "tiempo", "año", "día", "hombre",
+                "mujer", "vida", "momento", "forma", "mundo", "parte", "hacer", "tener", "decir", "poder", "ir", "ver",
+                "dar", "saber", "querer", "llegar", "pasar", "deber", "poner", "parecer", "quedar", "creer", "hablar",
+                "llevar", "dejar", "seguir", "encontrar", "llamar", "venir", "pensar", "salir", "volver", "tomar",
+                "conocer", "vivir", "sentir", "tratar", "mirar", "contar", "empezar", "esperar", "buscar", "existir",
+                "entrar", "trabajar", "escribir", "perder", "producir", "ocurrir", "entender", "pedir", "recibir",
+                "recordar", "terminar", "permitir", "aparecer", "conseguir", "comenzar", "servir", "sacar", "necesitar",
+                "mantener", "resultar", "leer", "caer", "cambiar", "presentar", "crear", "abrir", "considerar", "oír",
+                "acabar", "ganar", "formar", "traer", "partir", "morir", "aceptar", "realizar", "suponer", "comprender",
+                "lograr", "explicar", "preguntar", "tocar", "reconocer", "estudiar", "alcanzar", "nacer", "dirigir",
+                "correr", "utilizar", "pagar", "ayudar", "gustar", "jugar", "escuchar", "cumplir", "ofrecer", "descubrir",
+                "levantar", "intentar", "teclado", "simple", "mensaje", "correo", "texto", "cuenta", "cosa", "cosas",
+                "caso", "cada", "claro", "cierto", "cómo", "cuándo", "cuánto", "cuál", "cuáles", "lugar", "número",
+                "nombre", "país", "conmigo", "contigo", "compañero", "comida", "completo", "contacto", "correr", "cortar"
+            };
+            int freq = spanishWords.length * 10;
+            for (String w : spanishWords) {
+                mPrefixDictionary.insert(w, freq--);
+            }
+        } else {
+            final String[] englishWords = {
+                "the", "be", "to", "of", "and", "a", "in", "that", "have", "i", "it", "for", "not", "on", "with",
+                "he", "as", "you", "do", "at", "this", "but", "his", "by", "from", "they", "we", "say", "her",
+                "she", "or", "an", "will", "my", "one", "all", "would", "there", "their", "what", "so", "up",
+                "out", "if", "about", "who", "get", "which", "go", "me", "when", "make", "can", "like", "time",
+                "no", "just", "him", "know", "take", "people", "into", "year", "your", "good", "some", "could",
+                "them", "see", "other", "than", "then", "now", "look", "only", "come", "its", "over", "think",
+                "also", "back", "after", "use", "two", "how", "our", "work", "first", "well", "way", "even",
+                "new", "want", "because", "any", "these", "give", "day", "most", "us", "keyboard", "simple",
+                "great", "need", "feel", "high", "place", "thing", "things", "case", "call", "hand", "right", "world"
+            };
+            int freq = englishWords.length * 10;
+            for (String w : englishWords) {
+                mPrefixDictionary.insert(w, freq--);
+            }
+        }
+    }
+
+    public void updateSuggestions() {
+        if (mTopBarView == null || !isInputViewShown()) {
+            return;
+        }
+        if (!mSettings.getCurrent().mShowSuggestions) {
+            mTopBarView.setSuggestions(null);
+            return;
+        }
+        final EditorInfo editorInfo = getCurrentInputEditorInfo();
+        if (editorInfo != null) {
+            final InputAttributes attr = new InputAttributes(editorInfo, isFullscreenMode());
+            if (attr.mIsPasswordField) {
+                mTopBarView.setSuggestions(null);
+                return;
+            }
+        }
+        final String word = mInputLogic.mConnection.getWordBeforeCursor();
+        if (word.isEmpty()) {
+            mTopBarView.setSuggestions(null);
+            return;
+        }
+        final java.util.List<CharSequence> suggestions = mPrefixDictionary.getSuggestions(word, 6);
+        mTopBarView.setSuggestions(suggestions);
     }
 
     @Override
@@ -638,6 +658,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     @Override
     public void onComputeInsets(final InputMethodService.Insets outInsets) {
         super.onComputeInsets(outInsets);
+        // This method may be called before {@link #setInputView(View)}.
         if (mInputView == null) {
             return;
         }
@@ -646,33 +667,28 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             return;
         }
         final int inputHeight = mInputView.getHeight();
-
-        final boolean isClipboardVisible = (mClipboardHistoryView != null && mClipboardHistoryView.getVisibility() == View.VISIBLE);
-        final boolean isKeyboardShown = visibleKeyboardView.isShown();
-
-        if (!isClipboardVisible && isImeSuppressedByHardwareKeyboard() && !isKeyboardShown) {
+        if (isImeSuppressedByHardwareKeyboard() && !visibleKeyboardView.isShown()) {
+            // If there is a hardware keyboard and a visible software keyboard view has been hidden,
+            // no visual element will be shown on the screen.
             outInsets.contentTopInsets = inputHeight;
             outInsets.visibleTopInsets = inputHeight;
             return;
         }
-
-        final int visibleHeight;
-        if (isClipboardVisible) {
-            visibleHeight = mClipboardHistoryView.getHeight();
-        } else {
-            final View topBar = mInputView.findViewById(rkr.simplekeyboard.inputmethod.R.id.top_bar_view);
-            final int topBarHeight = (topBar != null && topBar.getVisibility() == View.VISIBLE) ? topBar.getHeight() : 0;
-            visibleHeight = visibleKeyboardView.getHeight() + topBarHeight;
-        }
-
+        final View topBar = mInputView.findViewById(rkr.simplekeyboard.inputmethod.R.id.top_bar_view);
+        final int topBarHeight = (topBar != null && topBar.getVisibility() == View.VISIBLE) ? topBar.getHeight() : 0;
+        final int visibleHeight = visibleKeyboardView.getHeight() + topBarHeight;
         final int visibleTopY = Math.max(0, inputHeight - visibleHeight);
-
-        if (isClipboardVisible || isKeyboardShown) {
-            final int touchTop = (!isClipboardVisible && mKeyboardSwitcher.isShowingMoreKeysPanel()) ? 0 : visibleTopY;
+        // Need to set expanded touchable region only if a keyboard view is being shown.
+        if (visibleKeyboardView.isShown()) {
+            final int touchLeft = 0;
+            final int touchTop = mKeyboardSwitcher.isShowingMoreKeysPanel() ? 0 : visibleTopY;
+            final int touchRight = mInputView.getWidth();
+            final int touchBottom = inputHeight
+                    // Extend touchable region below the keyboard.
+                    + EXTENDED_TOUCHABLE_REGION_HEIGHT;
             outInsets.touchableInsets = InputMethodService.Insets.TOUCHABLE_INSETS_REGION;
-            outInsets.touchableRegion.set(0, touchTop, mInputView.getWidth(), inputHeight + EXTENDED_TOUCHABLE_REGION_HEIGHT);
+            outInsets.touchableRegion.set(touchLeft, touchTop, touchRight, touchBottom);
         }
-
         outInsets.contentTopInsets = visibleTopY;
         outInsets.visibleTopInsets = visibleTopY;
     }
@@ -848,10 +864,28 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     // This method is public for testability of LatinIME, but also in the future it should
     // completely replace #onCodeInput.
     public void onEvent(final Event event) {
+        if (!event.isFunctionalKeyEvent() && event.mCodePoint == Constants.CODE_SPACE) {
+            final SettingsValues settingsValues = mSettings.getCurrent();
+            if (settingsValues.mAutoCorrectionEnabled) {
+                final EditorInfo editorInfo = getCurrentInputEditorInfo();
+                final InputAttributes attr = editorInfo != null ? new InputAttributes(editorInfo, isFullscreenMode()) : null;
+                if (attr == null || !attr.mIsPasswordField) {
+                    final String word = mInputLogic.mConnection.getWordBeforeCursor();
+                    if (word != null && word.length() > 2) {
+                        final CharSequence correction = mPrefixDictionary.getBestCorrection(word);
+                        if (correction != null) {
+                            mInputLogic.mConnection.deleteTextBeforeCursor(word.length());
+                            mInputLogic.mConnection.commitText(correction, 1);
+                        }
+                    }
+                }
+            }
+        }
         final InputTransaction completeInputTransaction =
                 mInputLogic.onCodeInput(mSettings.getCurrent(), event);
         updateStateAfterInputTransaction(completeInputTransaction);
         mKeyboardSwitcher.onEvent(event, getCurrentAutoCapsState(), getCurrentRecapitalizeState());
+        updateSuggestions();
     }
 
     // A helper method to split the code point and the key code. Ultimately, they should not be
@@ -879,6 +913,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                 mInputLogic.onTextInput(mSettings.getCurrent(), event);
         updateStateAfterInputTransaction(completeInputTransaction);
         mKeyboardSwitcher.onEvent(event, getCurrentAutoCapsState(), getCurrentRecapitalizeState());
+        updateSuggestions();
     }
 
     // Called from PointerTracker through the KeyboardActionListener interface
@@ -993,17 +1028,6 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                 | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
                 | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         startActivity(intent);
-    }
-
-    @Override
-    public boolean onKeyDown(final int keyCode, final KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_DOWN) {
-            if (mClipboardHistoryView != null && mClipboardHistoryView.getVisibility() == View.VISIBLE) {
-                hideClipboardHistory();
-                return true;
-            }
-        }
-        return super.onKeyDown(keyCode, event);
     }
 
     @Override

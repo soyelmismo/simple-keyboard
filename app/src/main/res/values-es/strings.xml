@@ -76,4 +76,7 @@
         <item>7 días</item>
         <item>Nunca</item>
     </string-array>
+    <string name="show_suggestions">Mostrar sugerencias de texto</string>
+    <string name="auto_correction">Autocorrección</string>
+    <string name="auto_correction_summary">La barra espaciadora corrige palabras mal escritas</string>
 </resources>
