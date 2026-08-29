@@ -37,6 +37,7 @@ public class TopBarView extends FrameLayout {
 
     private LinearLayout mToolTrayContainer;
     private ImageView mCloseButton;
+    private ImageView mEmojiButton;
     private ImageView mClipboardButton;
     private ImageView mSettingsButton;
     private ImageView mLanguageButton;
@@ -107,6 +108,15 @@ public class TopBarView extends FrameLayout {
         mCloseButton = ViewUtils.createBarIconButton(context, R.drawable.ic_close_vector, iconWidthPx);
         mCloseButton.setOnClickListener(v -> setMode(MODE_NORMAL));
         mToolTrayContainer.addView(mCloseButton);
+
+        mEmojiButton = ViewUtils.createBarIconButton(context, R.drawable.ic_emoji_vector, iconWidthPx);
+        mEmojiButton.setOnClickListener(v -> {
+            setMode(MODE_NORMAL);
+            if (mListener != null) {
+                mListener.onEmojiClicked();
+            }
+        });
+        mToolTrayContainer.addView(mEmojiButton);
 
         mClipboardButton = ViewUtils.createBarIconButton(context, R.drawable.sym_keyboard_paste, iconWidthPx);
         mClipboardButton.setOnClickListener(v -> {
