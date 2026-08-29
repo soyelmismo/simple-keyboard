@@ -17,6 +17,17 @@
         <item name="android:switchStyle">@style/Widget.Material3.Switch</item>
         <item name="android:actionBarStyle">@style/platformSettingsActionBar</item>
         <item name="android:actionBarTheme">@style/platformSettingsActionBarTheme</item>
+        <item name="android:alertDialogTheme">@style/platformDialogTheme</item>
+    </style>
+
+    <style name="platformDialogTheme" parent="@android:style/Theme.DeviceDefault.Dialog.Alert">
+        <item name="android:colorPrimary">@android:color/system_accent1_300</item>
+        <item name="android:colorAccent">@android:color/system_accent1_300</item>
+        <item name="android:colorControlActivated">@android:color/system_accent1_300</item>
+        <item name="android:colorControlHighlight">@android:color/system_accent1_700</item>
+        <item name="android:colorBackground">@android:color/system_neutral1_800</item>
+        <item name="android:backgroundDimAmount">0.6</item>
+        <item name="android:backgroundDimEnabled">true</item>
     </style>
 
     <style name="Widget.Material3.Switch" parent="@android:style/Widget.Material.CompoundButton.Switch">
