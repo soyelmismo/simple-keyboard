@@ -219,12 +219,7 @@ public class ClipboardHistoryView extends LinearLayout {
         if (mDatabase == null) return;
         final Context context = getContext();
         android.content.SharedPreferences prefs = rkr.simplekeyboard.inputmethod.compat.PreferenceManagerCompat.getDeviceSharedPreferences(context);
-        String val = prefs.getString(rkr.simplekeyboard.inputmethod.latin.settings.Settings.PREF_CLIPBOARD_RETENTION_TIME, "1440");
-        long tempRetention = 1440L;
-        try {
-            tempRetention = Long.parseLong(val);
-        } catch (NumberFormatException ignored) {}
-        final long retentionMinutes = tempRetention;
+        final long retentionMinutes = rkr.simplekeyboard.inputmethod.latin.settings.Settings.readClipboardRetentionMinutes(prefs);
 
         mAsyncExecutor.execute(() -> {
             mDatabase.deleteExpiredClips(retentionMinutes);

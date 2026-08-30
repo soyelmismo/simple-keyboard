@@ -53,4 +53,27 @@ public class ClipboardSuggestionTest {
     public void testIsSensitiveClipNullHandling() {
         assertFalse(ClipboardHistoryManager.isSensitiveClip(null));
     }
+
+    @Test
+    public void testSettingsReadClipboardRetentionMinutesDefaultOnNull() {
+        assertEquals(60, rkr.simplekeyboard.inputmethod.latin.settings.Settings.readClipboardRetentionMinutes(null));
+    }
+
+    @Test
+    public void testSettingsClampsOutOfBoundValues() {
+        android.content.SharedPreferences prefs = (android.content.SharedPreferences) java.lang.reflect.Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class<?>[]{android.content.SharedPreferences.class},
+                (proxy, method, args) -> {
+                    if ("getInt".equals(method.getName())) {
+                        throw new ClassCastException();
+                    }
+                    if ("getString".equals(method.getName())) {
+                        return "1440"; // legacy 24h
+                    }
+                    return null;
+                }
+        );
+        assertEquals(720, rkr.simplekeyboard.inputmethod.latin.settings.Settings.readClipboardRetentionMinutes(prefs));
+    }
 }

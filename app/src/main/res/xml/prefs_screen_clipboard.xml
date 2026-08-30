@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+<PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:latin="http://schemas.android.com/apk/res-auto"
     android:title="@string/settings_screen_clipboard">
+    <SwitchPreference
+        android:key="pref_clipboard_history_enabled"
+        android:title="@string/clipboard_history_enabled"
+        android:summary="@string/clipboard_history_enabled_summary"
+        android:defaultValue="true" />
     <SwitchPreference
         android:key="pref_clipboard_suggestions"
         android:title="@string/clipboard_suggestions"
@@ -11,10 +18,10 @@
         android:title="@string/suggest_screenshots"
         android:summary="@string/suggest_screenshots_summary"
         android:defaultValue="false" />
-    <ListPreference
+    <rkr.simplekeyboard.inputmethod.latin.settings.SeekBarDialogPreference
         android:key="pref_clipboard_retention_time"
         android:title="@string/clipboard_history_retention_time"
-        android:entries="@array/clipboard_retention_entries"
-        android:entryValues="@array/clipboard_retention_values"
-        android:defaultValue="1440" />
+        latin:minValue="30"
+        latin:maxValue="720"
+        latin:stepValue="30" />
 </PreferenceScreen>

@@ -64,7 +64,11 @@ public final class Settings extends BroadcastReceiver implements SharedPreferenc
     public static final String PREF_SHOW_NUMBER_ROW = "pref_show_number_row";
     public static final String PREF_SPACE_SWIPE = "pref_space_swipe";
     public static final String PREF_DELETE_SWIPE = "pref_delete_swipe";
+    public static final String PREF_CLIPBOARD_HISTORY_ENABLED = "pref_clipboard_history_enabled";
     public static final String PREF_CLIPBOARD_RETENTION_TIME = "pref_clipboard_retention_time";
+    public static final int CLIPBOARD_RETENTION_TIME_MIN_MINUTES = 30;
+    public static final int CLIPBOARD_RETENTION_TIME_MAX_MINUTES = 720;
+    public static final int CLIPBOARD_RETENTION_TIME_DEFAULT_MINUTES = 60;
     public static final String PREF_CLIPBOARD_SUGGESTIONS = "pref_clipboard_suggestions";
     public static final String PREF_SUGGEST_SCREENSHOTS = "pref_suggest_screenshots";
     public static final String PREF_KEY_SHAPE = "pref_key_shape";
@@ -265,6 +269,28 @@ public final class Settings extends BroadcastReceiver implements SharedPreferenc
 
     public static boolean readDeleteSwipeEnabled(final SharedPreferences prefs) {
         return prefs.getBoolean(PREF_DELETE_SWIPE, false);
+    }
+
+    public static boolean readClipboardHistoryEnabled(final SharedPreferences prefs) {
+        return prefs.getBoolean(PREF_CLIPBOARD_HISTORY_ENABLED, true);
+    }
+
+    public static int readClipboardRetentionMinutes(final SharedPreferences prefs) {
+        if (prefs == null) {
+            return CLIPBOARD_RETENTION_TIME_DEFAULT_MINUTES;
+        }
+        int minutes = CLIPBOARD_RETENTION_TIME_DEFAULT_MINUTES;
+        try {
+            minutes = prefs.getInt(PREF_CLIPBOARD_RETENTION_TIME, CLIPBOARD_RETENTION_TIME_DEFAULT_MINUTES);
+        } catch (ClassCastException e) {
+            String val = prefs.getString(PREF_CLIPBOARD_RETENTION_TIME, String.valueOf(CLIPBOARD_RETENTION_TIME_DEFAULT_MINUTES));
+            try {
+                minutes = Integer.parseInt(val);
+            } catch (NumberFormatException ignored) {
+                minutes = CLIPBOARD_RETENTION_TIME_DEFAULT_MINUTES;
+            }
+        }
+        return Math.min(CLIPBOARD_RETENTION_TIME_MAX_MINUTES, Math.max(CLIPBOARD_RETENTION_TIME_MIN_MINUTES, minutes));
     }
 
     public static boolean readClipboardSuggestionsEnabled(final SharedPreferences prefs) {

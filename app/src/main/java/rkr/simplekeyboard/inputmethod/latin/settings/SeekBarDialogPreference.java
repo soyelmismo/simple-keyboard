@@ -62,7 +62,7 @@ public final class SeekBarDialogPreference extends DialogPreference
 
     public void setInterface(final ValueProxy proxy) {
         mValueProxy = proxy;
-        final int value = mValueProxy.readValue(getKey());
+        final int value = clipValue(mValueProxy.readValue(getKey()));
         setSummary(mValueProxy.getValueText(value));
     }
 

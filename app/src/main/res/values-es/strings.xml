@@ -73,15 +73,12 @@
     <string name="suggest_screenshots">Mostrar capturas de pantalla en el portapapeles</string>
     <string name="suggest_screenshots_summary">Mostrar capturas recientes en sugerencias e historial del portapapeles</string>
     <string name="image_pasting_not_supported">Esta aplicación no admite pegar imágenes</string>
+    <string name="clipboard_history_enabled">Historial del portapapeles</string>
+    <string name="clipboard_history_enabled_summary">Guardar elementos copiados recientemente en el historial del portapapeles</string>
+    <string name="retention_time_minutes"><xliff:g id="MINUTES">%d</xliff:g> min</string>
+    <string name="retention_time_hours"><xliff:g id="HOURS">%d</xliff:g> h</string>
+    <string name="retention_time_hours_minutes"><xliff:g id="HOURS">%1$d</xliff:g> h <xliff:g id="MINUTES">%2$d</xliff:g> min</string>
     <string name="clipboard_history_retention_time">Tiempo de retención del portapapeles</string>
-    <string-array name="clipboard_retention_entries">
-        <item>10 minutos</item>
-        <item>1 hora</item>
-        <item>1 día</item>
-        <item>3 días</item>
-        <item>7 días</item>
-        <item>Nunca</item>
-    </string-array>
     <string name="key_shape">Forma de teclas</string>
     <string-array name="key_shape_entries">
         <item>Redondeadas</item>

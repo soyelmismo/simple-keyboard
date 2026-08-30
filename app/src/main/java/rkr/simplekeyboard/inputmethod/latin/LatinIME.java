@@ -1022,7 +1022,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     }
 
     private boolean displayClipboardChipIfAvailable() {
-        if (mClipboardHistoryManager == null) {
+        if (mClipboardHistoryManager == null || !mSettings.getCurrent().mClipboardHistoryEnabled) {
             return false;
         }
         if (mSettings.getCurrent().mSuggestScreenshots) {
