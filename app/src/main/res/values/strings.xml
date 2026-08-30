@@ -69,10 +69,10 @@
     <!-- Description for a keyboard layout listing the language and layout name. -->
     <string name="subtype_generic_layout"><xliff:g id="LANGUAGE_NAME" example="English (US)">%1$s</xliff:g> (<xliff:g id="LAYOUT" example="QWERTY">%2$s</xliff:g>)</string>
 
-    <string name="keyboard_theme_dark" translatable="false">Material Dark</string>
-    <string name="keyboard_theme_light" translatable="false">Material Light</string>
-    <string name="keyboard_theme_system" translatable="false">System Default</string>
-    <string name="keyboard_theme_black" translatable="false">AMOLED Black</string>
+    <string name="keyboard_theme_dark">Material Dark</string>
+    <string name="keyboard_theme_light">Material Light</string>
+    <string name="keyboard_theme_system">System Default</string>
+    <string name="keyboard_theme_black">AMOLED Black</string>
 
     <!-- Title of the button to add a language in the settings dialog [CHAR LIMIT=15] -->
     <string name="add">Add</string>
