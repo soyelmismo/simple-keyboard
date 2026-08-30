@@ -1,7 +1,35 @@
 apply plugin: 'com.android.application'
 
-def appVersionName = project.findProperty("versionName") ?: "7.0.0"
-def appVersionCode = project.findProperty("versionCode") ? project.property("versionCode").toInteger() : 70000
+def getGitVersionName() {
+    try {
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'describe', '--tags', '--always'
+            standardOutput = stdout
+        }
+        return stdout.toString().trim().replaceFirst('^v', '')
+    } catch (Exception ignored) {
+        return "7.4.1"
+    }
+}
+
+def computeVersionCode(String versionName) {
+    try {
+        def clean = versionName.split('-')[0]
+        def parts = clean.split('\\.')
+        if (parts.length >= 3) {
+            int major = parts[0].toInteger()
+            int minor = parts[1].toInteger()
+            int patch = parts[2].toInteger()
+            return major * 10000 + minor * 100 + patch
+        }
+    } catch (Exception ignored) {
+    }
+    return 70401
+}
+
+def appVersionName = project.findProperty("versionName") ?: getGitVersionName()
+def appVersionCode = project.findProperty("versionCode") ? project.property("versionCode").toInteger() : computeVersionCode(appVersionName)
 
 android {
     defaultConfig {
