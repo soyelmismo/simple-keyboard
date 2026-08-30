@@ -49,7 +49,6 @@
                 latin:keySpec="!text/keyspec_tablet_comma"
                 latin:moreKeys="!text/morekeys_tablet_comma,%"
                 latin:keyHintLabel="!text/keyhintlabel_tablet_comma"
-                latin:keyLabelFlags="hasPopupHint"
                 latin:keyStyle="settingsMoreKeysStyle" />
         </default>
     </switch>
