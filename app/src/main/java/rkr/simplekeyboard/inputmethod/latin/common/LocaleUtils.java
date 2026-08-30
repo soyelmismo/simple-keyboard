@@ -135,9 +135,17 @@ public final class LocaleUtils {
      */
     public static List<Locale> getSystemLocales() {
         ArrayList<Locale> locales = new ArrayList<>();
-        LocaleList localeList = Resources.getSystem().getConfiguration().getLocales();
-        for (int i = 0; i < localeList.size(); i++) {
-            locales.add(localeList.get(i));
+        if (rkr.simplekeyboard.inputmethod.compat.BuildCompatUtils.isAtLeastN()) {
+            LocaleList localeList = Resources.getSystem().getConfiguration().getLocales();
+            for (int i = 0; i < localeList.size(); i++) {
+                locales.add(localeList.get(i));
+            }
+        } else {
+            @SuppressWarnings("deprecation")
+            Locale systemLocale = Resources.getSystem().getConfiguration().locale;
+            if (systemLocale != null) {
+                locales.add(systemLocale);
+            }
         }
         return locales;
     }

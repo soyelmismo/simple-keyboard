@@ -22,7 +22,10 @@ import androidx.preference.PreferenceManager;
 
 public class PreferenceManagerCompat {
     public static Context getDeviceContext(Context context) {
-        return context.createDeviceProtectedStorageContext();
+        if (BuildCompatUtils.isAtLeastN()) {
+            return context.createDeviceProtectedStorageContext();
+        }
+        return context;
     }
 
     public static SharedPreferences getDeviceSharedPreferences(Context context) {

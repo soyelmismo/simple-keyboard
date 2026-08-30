@@ -185,6 +185,7 @@ public final class RichInputConnection {
         return expectedSelStart != mExpectedSelStart || expectedSelEnd != mExpectedSelEnd;
     }
 
+    @TargetApi(Build.VERSION_CODES.S)
     private void reloadTextCacheForSAndAbove(final int expectedSelStart, final int expectedSelEnd) {
         final SurroundingText textAroundCursor =
                 mIC.getSurroundingText(Constants.EDITOR_CONTENTS_CACHE_SIZE, Constants.EDITOR_CONTENTS_CACHE_SIZE, 0);

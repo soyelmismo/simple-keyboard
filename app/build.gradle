@@ -60,7 +60,7 @@ android {
     defaultConfig {
         applicationId "rkr.simplekeyboard.inputmethod"
         compileSdk 37
-        minSdkVersion 24
+        minSdkVersion 23
         targetSdkVersion 37
         versionCode appVersionCode
         versionName appVersionName

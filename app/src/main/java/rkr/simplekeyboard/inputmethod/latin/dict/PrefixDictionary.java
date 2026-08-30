@@ -164,7 +164,12 @@ public final class PrefixDictionary {
         }
     }
 
-    private static final ThreadLocal<float[][]> DIST_BUFFERS = ThreadLocal.withInitial(() -> new float[3][64]);
+    private static final ThreadLocal<float[][]> DIST_BUFFERS = new ThreadLocal<float[][]>() {
+        @Override
+        protected float[][] initialValue() {
+            return new float[3][64];
+        }
+    };
 
     // Distance helper buffers for zero-allocation Damerau-Levenshtein calculation
     private static float getTrivialDistance(final String s1, final String s2) {
