@@ -100,6 +100,7 @@ import rkr.simplekeyboard.inputmethod.latin.utils.ApplicationUtils;
 import rkr.simplekeyboard.inputmethod.latin.utils.LeakGuardHandlerWrapper;
 import rkr.simplekeyboard.inputmethod.latin.utils.ResourceUtils;
 import rkr.simplekeyboard.inputmethod.latin.utils.ViewLayoutUtils;
+import rkr.simplekeyboard.inputmethod.latin.utils.ViewUtils;
 
 /**
  * Input method implementation for Qwerty'ish keyboard.
@@ -496,6 +497,32 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                     public void onCloseClipboard() {
                         hideClipboardHistory();
                     }
+
+                    @Override
+                    public void onSearchStateChanged(boolean isSearching) {
+                        final View keyboardView = mKeyboardSwitcher.getMainKeyboardView();
+                        if (isSearching) {
+                            if (keyboardView != null) {
+                                keyboardView.setVisibility(View.VISIBLE);
+                            }
+                            if (mClipboardHistoryView != null) {
+                                mClipboardHistoryView.setTargetHeight(ViewUtils.dpToPx(LatinIME.this, 170));
+                            }
+                        } else {
+                            if (keyboardView != null) {
+                                keyboardView.setVisibility(View.GONE);
+                            }
+                            final int topBarHeight = (mTopBarView != null) ? mTopBarView.getHeight() : 0;
+                            final int keyboardHeight = (keyboardView != null) ? keyboardView.getHeight() : 0;
+                            final int totalHeight = topBarHeight + keyboardHeight;
+                            if (mClipboardHistoryView != null) {
+                                mClipboardHistoryView.setTargetHeight(totalHeight > 0 ? totalHeight : ViewUtils.dpToPx(LatinIME.this, 250));
+                            }
+                        }
+                        if (mInputView != null) {
+                            mInputView.requestLayout();
+                        }
+                    }
                 });
             }
 
@@ -606,6 +633,9 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     }
 
     public void hideClipboardHistory() {
+        if (mClipboardHistoryView != null && mClipboardHistoryView.isSearchActive()) {
+            mClipboardHistoryView.closeSearchWithoutReload();
+        }
         hideSecondaryView(mClipboardHistoryView);
     }
 
@@ -1568,6 +1598,27 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             mTopBarView.setExternalView(null);
         }
 
+        if (mClipboardHistoryView != null && mClipboardHistoryView.getVisibility() == View.VISIBLE && mClipboardHistoryView.isSearchActive()) {
+            if (isBackspaceEvent(event)) {
+                mClipboardHistoryView.deleteSearchChar();
+                return;
+            }
+            if (event.isFunctionalKeyEvent()) {
+                if (event.mKeyCode == Constants.CODE_SHIFT
+                        || event.mKeyCode == Constants.CODE_SYMBOL_SHIFT
+                        || event.mKeyCode == Constants.CODE_SWITCH_ALPHA_SYMBOL
+                        || event.mKeyCode == Constants.CODE_CAPSLOCK) {
+                    mKeyboardSwitcher.onEvent(event);
+                }
+                return;
+            }
+            if (event.mCodePoint > 0) {
+                mClipboardHistoryView.appendSearchText(new String(Character.toChars(event.mCodePoint)));
+                mKeyboardSwitcher.onEvent(event);
+            }
+            return;
+        }
+
         if (handleBackspaceRevert(event)) {
             return;
         }
@@ -1743,6 +1794,12 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     // Called from PointerTracker through the KeyboardActionListener interface
     @Override
     public void onTextInput(final String rawText) {
+        if (mClipboardHistoryView != null && mClipboardHistoryView.getVisibility() == View.VISIBLE && mClipboardHistoryView.isSearchActive()) {
+            if (rawText != null && !rawText.isEmpty()) {
+                mClipboardHistoryView.appendSearchText(rawText);
+            }
+            return;
+        }
         // TODO: have the keyboard pass the correct key code when we need it.
         final Event event = Event.createSoftwareTextEvent(rawText, Constants.CODE_OUTPUT_TEXT);
         final InputTransaction completeInputTransaction =
@@ -1871,6 +1928,10 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     public boolean onKeyDown(final int keyCode, final KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_DOWN) {
             if (mClipboardHistoryView != null && mClipboardHistoryView.getVisibility() == View.VISIBLE) {
+                if (mClipboardHistoryView.isSearchActive()) {
+                    mClipboardHistoryView.closeSearch();
+                    return true;
+                }
                 hideClipboardHistory();
                 return true;
             }
@@ -1879,7 +1940,72 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                 return true;
             }
         }
+        if (mClipboardHistoryView != null && mClipboardHistoryView.getVisibility() == View.VISIBLE && mClipboardHistoryView.isSearchActive() && event.getAction() == KeyEvent.ACTION_DOWN) {
+            if (keyCode == KeyEvent.KEYCODE_DEL) {
+                mClipboardHistoryView.deleteSearchChar();
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_SPACE) {
+                mClipboardHistoryView.appendSearchText(" ");
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_ENTER) {
+                return true;
+            }
+            if (KeyEvent.isModifierKey(keyCode)) {
+                return super.onKeyDown(keyCode, event);
+            }
+            int unicodeChar = event.getUnicodeChar();
+            if (unicodeChar > 0 && !Character.isISOControl(unicodeChar)) {
+                mClipboardHistoryView.appendSearchText(new String(Character.toChars(unicodeChar)));
+                return true;
+            }
+            return true;
+        }
         return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(final int keyCode, final KeyEvent event) {
+        if (mClipboardHistoryView != null && mClipboardHistoryView.getVisibility() == View.VISIBLE && mClipboardHistoryView.isSearchActive()) {
+            if (KeyEvent.isModifierKey(keyCode)) {
+                return super.onKeyUp(keyCode, event);
+            }
+            return true;
+        }
+        return super.onKeyUp(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyMultiple(final int keyCode, final int count, final KeyEvent event) {
+        if (mClipboardHistoryView != null && mClipboardHistoryView.getVisibility() == View.VISIBLE && mClipboardHistoryView.isSearchActive()) {
+            if (event.getCharacters() != null) {
+                mClipboardHistoryView.appendSearchText(event.getCharacters());
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_DEL) {
+                for (int i = 0; i < count; i++) {
+                    mClipboardHistoryView.deleteSearchChar();
+                }
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_SPACE) {
+                for (int i = 0; i < count; i++) {
+                    mClipboardHistoryView.appendSearchText(" ");
+                }
+                return true;
+            }
+            int unicodeChar = event.getUnicodeChar();
+            if (unicodeChar > 0 && !Character.isISOControl(unicodeChar)) {
+                final String s = new String(Character.toChars(unicodeChar));
+                for (int i = 0; i < count; i++) {
+                    mClipboardHistoryView.appendSearchText(s);
+                }
+                return true;
+            }
+            return true;
+        }
+        return super.onKeyMultiple(keyCode, count, event);
     }
 
     @Override

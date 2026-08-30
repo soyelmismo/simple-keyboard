@@ -31,6 +31,7 @@ public class ClipboardHistoryView extends LinearLayout {
         void onPasteText(CharSequence text);
         void onPasteImage(String imageUri);
         void onCloseClipboard();
+        void onSearchStateChanged(boolean isSearching);
     }
 
     private ClipboardDatabase mDatabase;
@@ -43,14 +44,27 @@ public class ClipboardHistoryView extends LinearLayout {
     private int mCardPressedColor = 0;
 
     private LinearLayout mHeaderLayout;
+    private LinearLayout mNormalHeaderLayout;
     private ImageView mCloseButton;
     private TextView mTitleText;
+    private ImageView mSearchButton;
     private ImageView mClearButton;
+
+    private LinearLayout mSearchHeaderLayout;
+    private ImageView mCloseSearchButton;
+    private TextView mSearchQueryView;
+    private ImageView mSearchClearButton;
+
+    private boolean mIsSearchActive = false;
+    private String mSearchQuery = "";
+    private long mCurrentQueryToken = 0L;
 
     private FrameLayout mContentContainer;
     private ScrollView mScrollView;
     private LinearLayout mCardsContainer;
     private LinearLayout mEmptyView;
+    private TextView mEmptyTitle;
+    private TextView mEmptyDesc;
 
     public ClipboardHistoryView(Context context) {
         super(context);
@@ -105,6 +119,12 @@ public class ClipboardHistoryView extends LinearLayout {
         int headerHeight = dpToPx(44);
         mHeaderLayout.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, headerHeight));
 
+        // Normal header layout
+        mNormalHeaderLayout = new LinearLayout(context);
+        mNormalHeaderLayout.setOrientation(HORIZONTAL);
+        mNormalHeaderLayout.setGravity(Gravity.CENTER_VERTICAL);
+        mNormalHeaderLayout.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+
         mCloseButton = ViewUtils.createSquareIconButton(context, R.drawable.ic_close_vector, dpToPx(44), dpToPx(10), mFunctionalTextColor, true);
         mCloseButton.setContentDescription(context.getString(android.R.string.cancel));
         mCloseButton.setOnClickListener(v -> {
@@ -112,7 +132,7 @@ public class ClipboardHistoryView extends LinearLayout {
                 mListener.onCloseClipboard();
             }
         });
-        mHeaderLayout.addView(mCloseButton);
+        mNormalHeaderLayout.addView(mCloseButton);
 
         mTitleText = new TextView(context);
         mTitleText.setText(R.string.clipboard);
@@ -123,12 +143,56 @@ public class ClipboardHistoryView extends LinearLayout {
         mTitleText.setPadding(dpToPx(8), 0, dpToPx(8), 0);
         LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1.0f);
         mTitleText.setLayoutParams(titleLp);
-        mHeaderLayout.addView(mTitleText);
+        mNormalHeaderLayout.addView(mTitleText);
+
+        mSearchButton = ViewUtils.createSquareIconButton(context, R.drawable.sym_keyboard_search, dpToPx(44), dpToPx(10), mFunctionalTextColor, true);
+        mSearchButton.setContentDescription(context.getString(R.string.clipboard_search));
+        mSearchButton.setOnClickListener(v -> startSearch());
+        mNormalHeaderLayout.addView(mSearchButton);
 
         mClearButton = ViewUtils.createSquareIconButton(context, R.drawable.ic_delete, dpToPx(44), dpToPx(10), mFunctionalTextColor, true);
         mClearButton.setContentDescription(context.getString(R.string.clipboard_clear_all));
         mClearButton.setOnClickListener(v -> clearUnpinned());
-        mHeaderLayout.addView(mClearButton);
+        mNormalHeaderLayout.addView(mClearButton);
+
+        mHeaderLayout.addView(mNormalHeaderLayout);
+
+        // Search header layout
+        mSearchHeaderLayout = new LinearLayout(context);
+        mSearchHeaderLayout.setOrientation(HORIZONTAL);
+        mSearchHeaderLayout.setGravity(Gravity.CENTER_VERTICAL);
+        mSearchHeaderLayout.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        mSearchHeaderLayout.setVisibility(GONE);
+
+        mCloseSearchButton = ViewUtils.createSquareIconButton(context, R.drawable.ic_close_vector, dpToPx(44), dpToPx(10), mFunctionalTextColor, true);
+        mCloseSearchButton.setContentDescription(context.getString(android.R.string.cancel));
+        mCloseSearchButton.setOnClickListener(v -> closeSearch());
+        mSearchHeaderLayout.addView(mCloseSearchButton);
+
+        mSearchQueryView = new TextView(context);
+        mSearchQueryView.setHint(R.string.clipboard_search_hint);
+        mSearchQueryView.setHintTextColor(ResourceUtils.isBrightColor(mTextColor) ? 0x88FFFFFF : 0x88000000);
+        mSearchQueryView.setTextColor(mTextColor);
+        mSearchQueryView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        mSearchQueryView.setSingleLine(true);
+        mSearchQueryView.setEllipsize(TextUtils.TruncateAt.END);
+        mSearchQueryView.setGravity(Gravity.CENTER_VERTICAL);
+        mSearchQueryView.setPadding(dpToPx(8), 0, dpToPx(8), 0);
+        LinearLayout.LayoutParams queryLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1.0f);
+        mSearchQueryView.setLayoutParams(queryLp);
+        mSearchHeaderLayout.addView(mSearchQueryView);
+
+        mSearchClearButton = ViewUtils.createSquareIconButton(context, R.drawable.sym_keyboard_delete, dpToPx(44), dpToPx(10), mFunctionalTextColor, true);
+        mSearchClearButton.setContentDescription(context.getString(R.string.clipboard_delete));
+        mSearchClearButton.setVisibility(GONE);
+        mSearchClearButton.setOnClickListener(v -> {
+            mSearchQuery = "";
+            updateSearchTextDisplay();
+            reloadSearchClips();
+        });
+        mSearchHeaderLayout.addView(mSearchClearButton);
+
+        mHeaderLayout.addView(mSearchHeaderLayout);
 
         addView(mHeaderLayout);
     }
@@ -169,24 +233,24 @@ public class ClipboardHistoryView extends LinearLayout {
         emptyIcon.setLayoutParams(new LinearLayout.LayoutParams(dpToPx(48), dpToPx(48)));
         mEmptyView.addView(emptyIcon);
 
-        TextView emptyTitle = new TextView(context);
-        emptyTitle.setText(R.string.clipboard_empty);
-        emptyTitle.setTextColor(mTextColor);
-        emptyTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        emptyTitle.setTypeface(Typeface.DEFAULT_BOLD);
-        emptyTitle.setAlpha(0.7f);
-        emptyTitle.setGravity(Gravity.CENTER);
-        emptyTitle.setPadding(0, dpToPx(8), 0, 0);
-        mEmptyView.addView(emptyTitle);
+        mEmptyTitle = new TextView(context);
+        mEmptyTitle.setText(R.string.clipboard_empty);
+        mEmptyTitle.setTextColor(mTextColor);
+        mEmptyTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        mEmptyTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        mEmptyTitle.setAlpha(0.7f);
+        mEmptyTitle.setGravity(Gravity.CENTER);
+        mEmptyTitle.setPadding(0, dpToPx(8), 0, 0);
+        mEmptyView.addView(mEmptyTitle);
 
-        TextView emptyDesc = new TextView(context);
-        emptyDesc.setText(R.string.clipboard_empty_description);
-        emptyDesc.setTextColor(mTextColor);
-        emptyDesc.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        emptyDesc.setAlpha(0.45f);
-        emptyDesc.setGravity(Gravity.CENTER);
-        emptyDesc.setPadding(0, dpToPx(4), 0, 0);
-        mEmptyView.addView(emptyDesc);
+        mEmptyDesc = new TextView(context);
+        mEmptyDesc.setText(R.string.clipboard_empty_description);
+        mEmptyDesc.setTextColor(mTextColor);
+        mEmptyDesc.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        mEmptyDesc.setAlpha(0.45f);
+        mEmptyDesc.setGravity(Gravity.CENTER);
+        mEmptyDesc.setPadding(0, dpToPx(4), 0, 0);
+        mEmptyView.addView(mEmptyDesc);
 
         mContentContainer.addView(mEmptyView);
         addView(mContentContainer);
@@ -201,14 +265,99 @@ public class ClipboardHistoryView extends LinearLayout {
         }
     }
 
+    public boolean isSearchActive() {
+        return mIsSearchActive;
+    }
+
+    public void startSearch() {
+        mIsSearchActive = true;
+        mSearchQuery = "";
+        if (mNormalHeaderLayout != null) mNormalHeaderLayout.setVisibility(GONE);
+        if (mSearchHeaderLayout != null) mSearchHeaderLayout.setVisibility(VISIBLE);
+        updateSearchTextDisplay();
+        if (mListener != null) {
+            mListener.onSearchStateChanged(true);
+        }
+        reloadSearchClips();
+    }
+
+    public void closeSearch() {
+        if (!mIsSearchActive) return;
+        mIsSearchActive = false;
+        mSearchQuery = "";
+        if (mSearchHeaderLayout != null) mSearchHeaderLayout.setVisibility(GONE);
+        if (mNormalHeaderLayout != null) mNormalHeaderLayout.setVisibility(VISIBLE);
+        if (mListener != null) {
+            mListener.onSearchStateChanged(false);
+        }
+        reloadClips();
+    }
+
+    public void closeSearchWithoutReload() {
+        mIsSearchActive = false;
+        mSearchQuery = "";
+        if (mSearchHeaderLayout != null) mSearchHeaderLayout.setVisibility(GONE);
+        if (mNormalHeaderLayout != null) mNormalHeaderLayout.setVisibility(VISIBLE);
+    }
+
+    public void appendSearchText(final String text) {
+        if (!mIsSearchActive || text == null || text.isEmpty()) return;
+        mSearchQuery += text;
+        updateSearchTextDisplay();
+        reloadSearchClips();
+    }
+
+    public void deleteSearchChar() {
+        if (!mIsSearchActive) return;
+        if (mSearchQuery.length() > 0) {
+            int lastCodePoint = mSearchQuery.codePointBefore(mSearchQuery.length());
+            int charCount = Character.charCount(lastCodePoint);
+            mSearchQuery = mSearchQuery.substring(0, mSearchQuery.length() - charCount);
+            updateSearchTextDisplay();
+            reloadSearchClips();
+        }
+    }
+
+    private void updateSearchTextDisplay() {
+        if (mSearchQueryView == null) return;
+        if (mSearchQuery.isEmpty()) {
+            mSearchQueryView.setText("");
+            mSearchQueryView.setHint(R.string.clipboard_search_hint);
+            if (mSearchClearButton != null) mSearchClearButton.setVisibility(GONE);
+        } else {
+            mSearchQueryView.setText(mSearchQuery);
+            if (mSearchClearButton != null) mSearchClearButton.setVisibility(VISIBLE);
+        }
+    }
+
+    private void reloadSearchClips() {
+        if (mDatabase == null) return;
+        final long token = ++mCurrentQueryToken;
+        final String query = mSearchQuery;
+        mAsyncExecutor.execute(() -> {
+            final List<ClipboardHistoryEntry> updatedClips = mDatabase.getClips(query);
+            post(() -> {
+                if (token == mCurrentQueryToken) {
+                    displayClips(updatedClips);
+                }
+            });
+        });
+    }
+
     private void executeDbTaskAndReload(final Runnable dbTask) {
         if (mDatabase == null) return;
+        final long token = ++mCurrentQueryToken;
+        final String query = mIsSearchActive ? mSearchQuery : null;
         mAsyncExecutor.execute(() -> {
             if (dbTask != null) {
                 dbTask.run();
             }
-            final List<ClipboardHistoryEntry> updatedClips = mDatabase.getClips();
-            post(() -> displayClips(updatedClips));
+            final List<ClipboardHistoryEntry> updatedClips = mDatabase.getClips(query);
+            post(() -> {
+                if (token == mCurrentQueryToken) {
+                    displayClips(updatedClips);
+                }
+            });
         });
     }
 
@@ -231,6 +380,13 @@ public class ClipboardHistoryView extends LinearLayout {
         mCardsContainer.removeAllViews();
 
         if (clips == null || clips.isEmpty()) {
+            if (mEmptyTitle != null) {
+                mEmptyTitle.setText(mIsSearchActive ? R.string.clipboard_search_empty : R.string.clipboard_empty);
+            }
+            if (mEmptyDesc != null) {
+                mEmptyDesc.setText(mIsSearchActive ? "" : getContext().getString(R.string.clipboard_empty_description));
+                mEmptyDesc.setVisibility(mIsSearchActive ? GONE : VISIBLE);
+            }
             showEmptyState();
             return;
         }
@@ -357,8 +513,27 @@ public class ClipboardHistoryView extends LinearLayout {
         return pinButton;
     }
 
-    private void togglePinClip(ClipboardHistoryEntry entry) {
-        executeDbTaskAndReload(() -> mDatabase.setPinned(entry.id, !entry.isPinned));
+    private void togglePinClip(final ClipboardHistoryEntry entry) {
+        if (mDatabase == null) return;
+        if (!entry.isPinned) {
+            mAsyncExecutor.execute(() -> {
+                final boolean success = mDatabase.setPinned(entry.id, true);
+                if (!success) {
+                    post(() -> android.widget.Toast.makeText(getContext(), R.string.clipboard_pin_limit_reached, android.widget.Toast.LENGTH_SHORT).show());
+                } else {
+                    final long token = ++mCurrentQueryToken;
+                    final String query = mIsSearchActive ? mSearchQuery : null;
+                    final List<ClipboardHistoryEntry> updatedClips = mDatabase.getClips(query);
+                    post(() -> {
+                        if (token == mCurrentQueryToken) {
+                            displayClips(updatedClips);
+                        }
+                    });
+                }
+            });
+        } else {
+            executeDbTaskAndReload(() -> mDatabase.setPinned(entry.id, false));
+        }
     }
 
     private ImageView createDeleteButton(Context context, final ClipboardHistoryEntry entry) {

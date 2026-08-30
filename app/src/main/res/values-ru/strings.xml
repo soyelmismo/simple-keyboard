@@ -67,6 +67,10 @@
     <string name="clipboard_delete">Удалить</string>
     <string name="clipboard_pin">Закрепить</string>
     <string name="clipboard_unpin">Открепить</string>
+    <string name="clipboard_search">Поиск в буфере обмена</string>
+    <string name="clipboard_search_hint">Поиск в буфере обмена\u2026</string>
+    <string name="clipboard_search_empty">Нет совпадений</string>
+    <string name="clipboard_pin_limit_reached">Достигнут лимит закрепленных элементов</string>
     <string name="clipboard_suggestions">Подсказки из буфера обмена</string>
     <string name="clipboard_suggestions_summary">Показывать недавние скопированные элементы в строке подсказок</string>
     <string name="suggest_screenshots">Показывать скриншоты в буфере обмена</string>

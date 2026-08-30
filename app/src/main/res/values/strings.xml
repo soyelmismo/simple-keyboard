@@ -107,6 +107,10 @@
     <string name="clipboard_delete">Delete</string>
     <string name="clipboard_pin">Pin</string>
     <string name="clipboard_unpin">Unpin</string>
+    <string name="clipboard_search">Search clipboard</string>
+    <string name="clipboard_search_hint">Search clipboard\u2026</string>
+    <string name="clipboard_search_empty">No matching items</string>
+    <string name="clipboard_pin_limit_reached">Pinned items limit reached</string>
     <string name="clipboard_suggestions">Show clipboard suggestions</string>
     <string name="clipboard_suggestions_summary">Show recently copied items in suggestion bar</string>
     <string name="suggest_screenshots">Show screenshots in clipboard</string>

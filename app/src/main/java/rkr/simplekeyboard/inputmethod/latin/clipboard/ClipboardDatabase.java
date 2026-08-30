@@ -10,6 +10,7 @@ import android.util.Log;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 public class ClipboardDatabase extends SQLiteOpenHelper {
@@ -22,7 +23,8 @@ public class ClipboardDatabase extends SQLiteOpenHelper {
     private static final String COL_TIMESTAMP = "timestamp";
     private static final String COL_PINNED = "is_pinned";
     private static final String COL_URI = "uri";
-    private static final int MAX_CLIPS = 50;
+    public static final int MAX_CLIPS = 50;
+    public static final int MAX_PINNED_CLIPS = 50;
     private static final int MAX_TEXT_LENGTH = 50000;
 
     public ClipboardDatabase(Context context) {
@@ -193,14 +195,29 @@ public class ClipboardDatabase extends SQLiteOpenHelper {
         }
     }
 
-    public synchronized void setPinned(long id, boolean isPinned) {
+    public synchronized boolean setPinned(long id, boolean isPinned) {
         try {
             SQLiteDatabase db = getWritableDatabase();
+            if (isPinned) {
+                Cursor countCursor = db.rawQuery("SELECT COUNT(*) FROM " + TABLE_NAME + " WHERE " + COL_PINNED + "=1", null);
+                int pinnedCount = 0;
+                if (countCursor != null) {
+                    if (countCursor.moveToFirst()) {
+                        pinnedCount = countCursor.getInt(0);
+                    }
+                    countCursor.close();
+                }
+                if (pinnedCount >= MAX_PINNED_CLIPS) {
+                    return false;
+                }
+            }
             ContentValues values = new ContentValues();
             values.put(COL_PINNED, isPinned ? 1 : 0);
             db.update(TABLE_NAME, values, COL_ID + "=?", new String[]{String.valueOf(id)});
+            return true;
         } catch (Throwable e) {
             Log.e(TAG, "Error setting clip pinned state", e);
+            return false;
         }
     }
 
@@ -213,7 +230,21 @@ public class ClipboardDatabase extends SQLiteOpenHelper {
         }
     }
 
+    public static boolean matchesQuery(final String text, final String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return true;
+        }
+        if (text == null) {
+            return false;
+        }
+        return text.toLowerCase(Locale.getDefault()).contains(query.toLowerCase(Locale.getDefault()));
+    }
+
     public synchronized List<ClipboardHistoryEntry> getClips() {
+        return getClips(null);
+    }
+
+    public synchronized List<ClipboardHistoryEntry> getClips(final String query) {
         List<ClipboardHistoryEntry> clips = new ArrayList<>();
         Cursor cursor = null;
         try {
@@ -222,10 +253,16 @@ public class ClipboardDatabase extends SQLiteOpenHelper {
                     COL_PINNED + " DESC, " + COL_TIMESTAMP + " DESC");
 
             if (cursor != null && cursor.moveToFirst()) {
+                final boolean filterActive = query != null && !query.trim().isEmpty();
+                final String queryLower = filterActive ? query.toLowerCase(Locale.getDefault()) : null;
                 do {
                     ClipboardHistoryEntry entry = ClipboardHistoryEntry.fromCursor(cursor);
                     if (entry != null) {
-                        clips.add(entry);
+                        if (!filterActive) {
+                            clips.add(entry);
+                        } else if (entry.text != null && entry.text.toLowerCase(Locale.getDefault()).contains(queryLower)) {
+                            clips.add(entry);
+                        }
                     }
                 } while (cursor.moveToNext());
             }

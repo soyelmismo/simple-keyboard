@@ -67,6 +67,10 @@
     <string name="clipboard_delete">Eliminar</string>
     <string name="clipboard_pin">Fijar</string>
     <string name="clipboard_unpin">Desfijar</string>
+    <string name="clipboard_search">Buscar en el portapapeles</string>
+    <string name="clipboard_search_hint">Buscar en el portapapeles\u2026</string>
+    <string name="clipboard_search_empty">No hay elementos coincidentes</string>
+    <string name="clipboard_pin_limit_reached">Límite de elementos fijados alcanzado</string>
     <string name="clipboard_suggestions">Mostrar sugerencias del portapapeles</string>
     <string name="clipboard_suggestions_summary">Mostrar elementos copiados recientemente en la barra de sugerencias</string>
     <string name="suggest_screenshots">Mostrar capturas de pantalla en el portapapeles</string>

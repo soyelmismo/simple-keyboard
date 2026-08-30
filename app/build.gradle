@@ -65,6 +65,7 @@ android {
         versionCode appVersionCode
         versionName appVersionName
         resourceConfigurations += ["en", "es"]
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
         release {
@@ -112,5 +113,8 @@ dependencies {
     implementation 'androidx.preference:preference:1.2.1'
     implementation 'androidx.autofill:autofill:1.3.0'
     testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test:runner:1.6.1'
 }
 
