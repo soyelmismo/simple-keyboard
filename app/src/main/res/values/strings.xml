@@ -33,6 +33,8 @@
     <string name="settings_screen_key_press">Key press</string>
     <!-- Settings screen title for appearance preferences [CHAR LIMIT=33] -->
     <string name="settings_screen_appearance">Appearance</string>
+    <!-- Settings screen title for advanced preferences [CHAR LIMIT=33] -->
+    <string name="settings_screen_advanced">Advanced settings</string>
     <!-- Settings screen title for keyboard theme settings [CHAR LIMIT=33] -->
     <string name="settings_screen_theme">Theme</string>
     <string name="version">Version</string>
@@ -89,6 +91,18 @@
 
     <string name="prefs_keyboard_height_settings">Keyboard height</string>
     <string name="prefs_bottom_offset_portrait_settings">Bottom offset</string>
+    <string name="prefs_bottom_offset_landscape_settings">Bottom offset (landscape)</string>
+    <string name="settings_category_key_repeat">Key repeat &amp; deletion</string>
+    <string name="prefs_key_repeat_start_timeout">Key repeat start delay</string>
+    <string name="prefs_key_repeat_interval">Key repeat interval</string>
+    <string name="settings_category_vibration">Haptic feedback</string>
+    <string name="prefs_vibration_duration">Vibration duration</string>
+    <string name="settings_category_popup_preview">Popup preview</string>
+    <string name="prefs_key_preview_linger_timeout">Popup preview dismiss delay</string>
+    <string name="settings_category_appearance_advanced">Display &amp; offsets</string>
+    <string name="settings_category_clipboard_advanced">Clipboard limits</string>
+    <string name="prefs_clipboard_max_clips">Maximum stored clips</string>
+    <string name="unit_clips"><xliff:g id="CLIPS">%d</xliff:g> clips</string>
     <string name="show_special_chars">Show special characters</string>
     <string name="show_language_switch_key">Show language switch key</string>
     <string name="show_language_on_spacebar">Show language on spacebar</string>

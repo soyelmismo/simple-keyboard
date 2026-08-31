@@ -66,11 +66,56 @@ public class SettingsValues {
     // Deduced settings
     public final float mKeypressSoundVolume;
     public final int mKeyPreviewPopupDismissDelay;
+    public final int mKeyRepeatStartTimeout;
+    public final int mKeyRepeatInterval;
+    public final int mVibrationDuration;
 
     // Debug settings
     public final float mKeyboardHeightScale;
 
     public final int mBottomOffsetPortrait;
+    public final int mBottomOffsetLandscape;
+    public final int mClipboardMaxClips;
+
+    // Package-private constructor for unit testing
+    public SettingsValues(final int bottomOffsetPortrait, final int bottomOffsetLandscape) {
+        mSpacingAndPunctuations = null;
+        mInputAttributes = null;
+        mHasHardwareKeyboard = false;
+        mAutoCap = true;
+        mAutoPeriodEnabled = false;
+        mVibrateOn = true;
+        mSoundOn = false;
+        mKeyPreviewPopupOn = true;
+        mUseOnScreen = false;
+        mShowsLanguageSwitchKey = true;
+        mShowLanguageOnSpacebar = true;
+        mImeSwitchEnabled = false;
+        mKeyLongpressTimeout = 300;
+        mKeypressSoundVolume = 0.5f;
+        mKeyPreviewPopupDismissDelay = 53;
+        mKeyRepeatStartTimeout = 400;
+        mKeyRepeatInterval = 50;
+        mVibrationDuration = 0;
+        mKeyboardHeightScale = DEFAULT_SIZE_SCALE;
+        mBottomOffsetPortrait = bottomOffsetPortrait;
+        mBottomOffsetLandscape = bottomOffsetLandscape;
+        mClipboardMaxClips = 50;
+        mShowSpecialChars = true;
+        mShowNumberRow = false;
+        mSpaceSwipeEnabled = false;
+        mDeleteSwipeEnabled = false;
+        mSwipeSensitivity = 1.0f;
+        mDisableLandscapeFullscreen = false;
+        mShowSuggestions = true;
+        mSuggestionsInUrls = false;
+        mClipboardEnabled = true;
+        mClipboardSuggestionsEnabled = false;
+        mSuggestScreenshots = false;
+        mAutoLearnEnabled = true;
+        mAutoCorrectionThreshold = 1.0f;
+        mAutoCorrectionEnabled = true;
+    }
 
     public SettingsValues(final SharedPreferences prefs, final Resources res,
             final InputAttributes inputAttributes) {
@@ -95,9 +140,14 @@ public class SettingsValues {
         // Compute other readable settings
         mKeyLongpressTimeout = Settings.readKeyLongpressTimeout(prefs, res);
         mKeypressSoundVolume = Settings.readKeypressSoundVolume(prefs);
-        mKeyPreviewPopupDismissDelay = res.getInteger(R.integer.config_key_preview_linger_timeout);
+        mKeyPreviewPopupDismissDelay = Settings.readKeyPreviewLingerTimeout(prefs, res);
+        mKeyRepeatStartTimeout = Settings.readKeyRepeatStartTimeout(prefs, res);
+        mKeyRepeatInterval = Settings.readKeyRepeatInterval(prefs, res);
+        mVibrationDuration = Settings.readVibrationDuration(prefs);
         mKeyboardHeightScale = Settings.readKeyboardHeight(prefs, DEFAULT_SIZE_SCALE);
         mBottomOffsetPortrait = Settings.readBottomOffsetPortrait(prefs);
+        mBottomOffsetLandscape = Settings.readBottomOffsetLandscape(prefs);
+        mClipboardMaxClips = Settings.readClipboardMaxClips(prefs);
         mShowSpecialChars = prefs.getBoolean(Settings.PREF_SHOW_SPECIAL_CHARS, true);
         mShowNumberRow = prefs.getBoolean(Settings.PREF_SHOW_NUMBER_ROW, false);
         mSpaceSwipeEnabled = prefs.getBoolean(Settings.PREF_SPACE_SWIPE, false);

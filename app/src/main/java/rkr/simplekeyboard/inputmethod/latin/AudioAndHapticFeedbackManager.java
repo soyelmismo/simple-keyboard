@@ -116,7 +116,25 @@ public final class AudioAndHapticFeedbackManager {
         return mSettingsValues != null && mSettingsValues.mVibrateOn && mVibrator != null;
     }
 
+    private void triggerCustomVibration(final int durationMs, final View fallbackView) {
+        if (mVibrator == null) {
+            return;
+        }
+        if (durationMs > 0) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                mVibrator.vibrate(VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE));
+            } else {
+                mVibrator.vibrate(durationMs);
+            }
+        } else {
+            triggerVibrationEffect(VibrationEffect.EFFECT_CLICK, fallbackView);
+        }
+    }
+
     private void triggerVibrationEffect(final int effectId, final View fallbackView) {
+        if (mVibrator == null) {
+            return;
+        }
         if (BuildCompatUtils.isAtLeastQ()) {
             mVibrator.vibrate(VibrationEffect.createPredefined(effectId));
         } else if (fallbackView != null) {
@@ -134,7 +152,20 @@ public final class AudioAndHapticFeedbackManager {
     }
 
     public void performHapticFeedback(final View viewToPerformHapticFeedbackOn) {
-        vibratePredefined(VibrationEffect.EFFECT_CLICK, viewToPerformHapticFeedbackOn);
+        if (!canHapticVibrate()) {
+            return;
+        }
+        final int customDuration = mSettingsValues != null ? mSettingsValues.mVibrationDuration : 0;
+        mBackgroundThread.execute(() -> triggerCustomVibration(customDuration, viewToPerformHapticFeedbackOn));
+    }
+
+    public void performVibrationPreview(final int durationMs) {
+        if (mVibrator == null || !mVibrator.hasVibrator()) {
+            return;
+        }
+        if (mBackgroundThread != null) {
+            mBackgroundThread.execute(() -> triggerCustomVibration(durationMs, null));
+        }
     }
 
     private boolean isTickThrottled() {

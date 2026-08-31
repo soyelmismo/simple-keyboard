@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:key="screen_advanced"
+    android:title="@string/settings_screen_advanced">
+
+    <PreferenceCategory
+        android:title="@string/settings_category_key_repeat">
+
+        <rkr.simplekeyboard.inputmethod.latin.settings.SeekBarDialogPreference
+            android:key="pref_key_repeat_start_timeout"
+            android:title="@string/prefs_key_repeat_start_timeout"
+            app:minValue="@integer/config_min_key_repeat_start_timeout"
+            app:maxValue="@integer/config_max_key_repeat_start_timeout"
+            app:stepValue="@integer/config_key_repeat_start_timeout_step" />
+
+        <rkr.simplekeyboard.inputmethod.latin.settings.SeekBarDialogPreference
+            android:key="pref_key_repeat_interval"
+            android:title="@string/prefs_key_repeat_interval"
+            app:minValue="@integer/config_min_key_repeat_interval"
+            app:maxValue="@integer/config_max_key_repeat_interval"
+            app:stepValue="@integer/config_key_repeat_interval_step" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:key="category_vibration_advanced"
+        android:title="@string/settings_category_vibration">
+
+        <rkr.simplekeyboard.inputmethod.latin.settings.SeekBarDialogPreference
+            android:key="pref_vibration_duration"
+            android:title="@string/prefs_vibration_duration"
+            app:minValue="@integer/config_min_vibration_duration"
+            app:maxValue="@integer/config_max_vibration_duration"
+            app:stepValue="@integer/config_vibration_duration_step" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="@string/settings_category_popup_preview">
+
+        <rkr.simplekeyboard.inputmethod.latin.settings.SeekBarDialogPreference
+            android:key="pref_key_preview_linger_timeout"
+            android:title="@string/prefs_key_preview_linger_timeout"
+            app:minValue="@integer/config_min_key_preview_linger_timeout"
+            app:maxValue="@integer/config_max_key_preview_linger_timeout"
+            app:stepValue="@integer/config_key_preview_linger_timeout_step" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="@string/settings_category_appearance_advanced">
+
+        <rkr.simplekeyboard.inputmethod.latin.settings.SeekBarDialogPreference
+            android:key="pref_bottom_offset_landscape"
+            android:title="@string/prefs_bottom_offset_landscape_settings"
+            app:minValue="@integer/config_min_bottom_offset_landscape"
+            app:maxValue="@integer/config_max_bottom_offset_landscape"
+            app:stepValue="@integer/config_bottom_offset_step" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="@string/settings_category_clipboard_advanced">
+
+        <rkr.simplekeyboard.inputmethod.latin.settings.SeekBarDialogPreference
+            android:key="pref_clipboard_max_clips"
+            android:title="@string/prefs_clipboard_max_clips"
+            app:minValue="@integer/config_min_clipboard_max_clips"
+            app:maxValue="@integer/config_max_clipboard_max_clips"
+            app:stepValue="@integer/config_clipboard_max_clips_step" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

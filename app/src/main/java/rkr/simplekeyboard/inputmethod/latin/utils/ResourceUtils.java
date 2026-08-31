@@ -65,7 +65,7 @@ public final class ResourceUtils {
             final SettingsValues settingsValues) {
         return res.getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT
                 ? (int)(settingsValues.mBottomOffsetPortrait * res.getDisplayMetrics().density)
-                : 0;
+                : (int)(settingsValues.mBottomOffsetLandscape * res.getDisplayMetrics().density);
     }
 
     public static boolean isValidFraction(final float fraction) {

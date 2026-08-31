@@ -75,6 +75,14 @@
             android:fragment="rkr.simplekeyboard.inputmethod.latin.settings.AppearanceSettingsFragment"
             app:widgetLayout="@layout/preference_chevron" />
 
+        <Preference
+            android:key="screen_advanced"
+            android:title="@string/settings_screen_advanced"
+            android:icon="@drawable/ic_settings_advanced"
+            app:iconTint="?attr/colorOnSurfaceVariant"
+            android:fragment="rkr.simplekeyboard.inputmethod.latin.settings.AdvancedSettingsFragment"
+            app:widgetLayout="@layout/preference_chevron" />
+
     </PreferenceCategory>
 
     <PreferenceCategory

@@ -64,6 +64,12 @@ public final class Settings extends BroadcastReceiver implements SharedPreferenc
     public static final String PREF_KEY_LONGPRESS_TIMEOUT = "pref_key_longpress_timeout";
     public static final String PREF_KEYBOARD_HEIGHT = "pref_keyboard_height";
     public static final String PREF_BOTTOM_OFFSET_PORTRAIT = "pref_bottom_offset_portrait";
+    public static final String PREF_BOTTOM_OFFSET_LANDSCAPE = "pref_bottom_offset_landscape";
+    public static final String PREF_KEY_REPEAT_START_TIMEOUT = "pref_key_repeat_start_timeout";
+    public static final String PREF_KEY_REPEAT_INTERVAL = "pref_key_repeat_interval";
+    public static final String PREF_VIBRATION_DURATION = "pref_vibration_duration";
+    public static final int DEFAULT_VIBRATION_DURATION = 0;
+    public static final String PREF_KEY_PREVIEW_LINGER_TIMEOUT = "pref_key_preview_linger_timeout";
     public static final String PREF_SHOW_SPECIAL_CHARS = "pref_show_special_chars";
     public static final String PREF_SHOW_NUMBER_ROW = "pref_show_number_row";
     public static final String PREF_SPACE_SWIPE = "pref_space_swipe";
@@ -71,6 +77,10 @@ public final class Settings extends BroadcastReceiver implements SharedPreferenc
     public static final String PREF_SWIPE_SENSITIVITY = "pref_swipe_sensitivity";
     public static final String PREF_DISABLE_LANDSCAPE_FULLSCREEN = "pref_disable_landscape_fullscreen";
     public static final String PREF_CLIPBOARD_ENABLED = "pref_clipboard_enabled";
+    public static final String PREF_CLIPBOARD_MAX_CLIPS = "pref_clipboard_max_clips";
+    public static final int CLIPBOARD_MAX_CLIPS_DEFAULT = 50;
+    public static final int CLIPBOARD_MAX_CLIPS_MIN = 10;
+    public static final int CLIPBOARD_MAX_CLIPS_MAX = 100;
 
     public static final String PREF_CLIPBOARD_RETENTION_TIME = "pref_clipboard_retention_time";
     public static final int CLIPBOARD_RETENTION_TIME_MIN_MINUTES = 30;
@@ -237,6 +247,12 @@ public final class Settings extends BroadcastReceiver implements SharedPreferenc
 
         map.put(PREF_KEY_LONGPRESS_TIMEOUT, intApplier);
         map.put(PREF_BOTTOM_OFFSET_PORTRAIT, intApplier);
+        map.put(PREF_BOTTOM_OFFSET_LANDSCAPE, intApplier);
+        map.put(PREF_KEY_REPEAT_START_TIMEOUT, intApplier);
+        map.put(PREF_KEY_REPEAT_INTERVAL, intApplier);
+        map.put(PREF_VIBRATION_DURATION, intApplier);
+        map.put(PREF_KEY_PREVIEW_LINGER_TIMEOUT, intApplier);
+        map.put(PREF_CLIPBOARD_MAX_CLIPS, intApplier);
 
         return Collections.unmodifiableMap(map);
     }
@@ -351,6 +367,70 @@ public final class Settings extends BroadcastReceiver implements SharedPreferenc
 
     public static int readBottomOffsetPortrait(final SharedPreferences prefs) {
         return prefs.getInt(PREF_BOTTOM_OFFSET_PORTRAIT, DEFAULT_BOTTOM_OFFSET);
+    }
+
+    public static int readBottomOffsetLandscape(final SharedPreferences prefs) {
+        return prefs.getInt(PREF_BOTTOM_OFFSET_LANDSCAPE, DEFAULT_BOTTOM_OFFSET);
+    }
+
+    public static int readKeyRepeatStartTimeout(final SharedPreferences prefs, final Resources res) {
+        final int milliseconds = prefs.getInt(PREF_KEY_REPEAT_START_TIMEOUT, UNDEFINED_PREFERENCE_VALUE_INT);
+        return (milliseconds != UNDEFINED_PREFERENCE_VALUE_INT) ? milliseconds
+                : readDefaultKeyRepeatStartTimeout(res);
+    }
+
+    public static int readDefaultKeyRepeatStartTimeout(final Resources res) {
+        return res.getInteger(R.integer.config_key_repeat_start_timeout);
+    }
+
+    public static int readKeyRepeatInterval(final SharedPreferences prefs, final Resources res) {
+        final int milliseconds = prefs.getInt(PREF_KEY_REPEAT_INTERVAL, UNDEFINED_PREFERENCE_VALUE_INT);
+        return (milliseconds != UNDEFINED_PREFERENCE_VALUE_INT) ? milliseconds
+                : readDefaultKeyRepeatInterval(res);
+    }
+
+    public static int readDefaultKeyRepeatInterval(final Resources res) {
+        return res.getInteger(R.integer.config_key_repeat_interval);
+    }
+
+    public static int readVibrationDuration(final SharedPreferences prefs) {
+        return prefs.getInt(PREF_VIBRATION_DURATION, DEFAULT_VIBRATION_DURATION);
+    }
+
+    public static int readDefaultVibrationDuration() {
+        return DEFAULT_VIBRATION_DURATION;
+    }
+
+    public static int readKeyPreviewLingerTimeout(final SharedPreferences prefs, final Resources res) {
+        final int milliseconds = prefs.getInt(PREF_KEY_PREVIEW_LINGER_TIMEOUT, UNDEFINED_PREFERENCE_VALUE_INT);
+        return (milliseconds != UNDEFINED_PREFERENCE_VALUE_INT) ? milliseconds
+                : readDefaultKeyPreviewLingerTimeout(res);
+    }
+
+    public static int readDefaultKeyPreviewLingerTimeout(final Resources res) {
+        return res.getInteger(R.integer.config_key_preview_linger_timeout);
+    }
+
+    public static int readClipboardMaxClips(final SharedPreferences prefs) {
+        if (prefs == null) {
+            return CLIPBOARD_MAX_CLIPS_DEFAULT;
+        }
+        int maxClips = CLIPBOARD_MAX_CLIPS_DEFAULT;
+        try {
+            maxClips = prefs.getInt(PREF_CLIPBOARD_MAX_CLIPS, CLIPBOARD_MAX_CLIPS_DEFAULT);
+        } catch (ClassCastException e) {
+            String val = prefs.getString(PREF_CLIPBOARD_MAX_CLIPS, String.valueOf(CLIPBOARD_MAX_CLIPS_DEFAULT));
+            try {
+                maxClips = Integer.parseInt(val);
+            } catch (NumberFormatException ignored) {
+                maxClips = CLIPBOARD_MAX_CLIPS_DEFAULT;
+            }
+        }
+        return Math.min(CLIPBOARD_MAX_CLIPS_MAX, Math.max(CLIPBOARD_MAX_CLIPS_MIN, maxClips));
+    }
+
+    public static int readDefaultClipboardMaxClips() {
+        return CLIPBOARD_MAX_CLIPS_DEFAULT;
     }
 
     public static final int DEFAULT_BOTTOM_OFFSET = 0;

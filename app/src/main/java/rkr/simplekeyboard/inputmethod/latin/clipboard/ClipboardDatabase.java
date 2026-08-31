@@ -27,8 +27,11 @@ public class ClipboardDatabase extends SQLiteOpenHelper {
     public static final int MAX_PINNED_CLIPS = 50;
     private static final int MAX_TEXT_LENGTH = 50000;
 
+    private final Context mContext;
+
     public ClipboardDatabase(Context context) {
         super(rkr.simplekeyboard.inputmethod.compat.PreferenceManagerCompat.getDeviceContext(context), DATABASE_NAME, null, DATABASE_VERSION);
+        mContext = rkr.simplekeyboard.inputmethod.compat.PreferenceManagerCompat.getDeviceContext(context);
     }
 
     @Override
@@ -217,10 +220,24 @@ public class ClipboardDatabase extends SQLiteOpenHelper {
         }
     }
 
+    private int getMaxClips() {
+        if (mContext == null) {
+            return MAX_CLIPS;
+        }
+        try {
+            android.content.SharedPreferences prefs =
+                    rkr.simplekeyboard.inputmethod.compat.PreferenceManagerCompat.getDeviceSharedPreferences(mContext);
+            return rkr.simplekeyboard.inputmethod.latin.settings.Settings.readClipboardMaxClips(prefs);
+        } catch (Throwable ignored) {
+            return MAX_CLIPS;
+        }
+    }
+
     private void cleanupOldClips(SQLiteDatabase db) {
         try {
+            final int maxClips = getMaxClips();
             String subquery = "SELECT " + COL_ID + " FROM " + TABLE_NAME
-                    + " WHERE " + COL_PINNED + "=0 ORDER BY " + COL_TIMESTAMP + " DESC LIMIT " + MAX_CLIPS;
+                    + " WHERE " + COL_PINNED + "=0 ORDER BY " + COL_TIMESTAMP + " DESC LIMIT " + maxClips;
             deleteClipsAndFiles(db, COL_PINNED + "=0 AND " + COL_ID + " NOT IN (" + subquery + ")", null);
         } catch (Throwable e) {
             Log.e(TAG, "Error cleaning up old clips", e);

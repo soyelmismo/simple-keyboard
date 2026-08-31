@@ -25,6 +25,7 @@
     <string name="settings_screen_preferences">Preferencias</string>
     <string name="settings_screen_key_press">Presionar tecla</string>
     <string name="settings_screen_appearance">Apariencia</string>
+    <string name="settings_screen_advanced">Ajustes avanzados</string>
     <string name="settings_screen_theme">Tema</string>
     <string name="version">Versión</string>
     <string name="abbreviation_unit_milliseconds"><xliff:g id="MILLISECONDS">%d</xliff:g>ms</string>
@@ -49,6 +50,18 @@
     <string name="button_default">Predeterminado</string>
     <string name="prefs_keyboard_height_settings">Altura del teclado</string>
     <string name="prefs_bottom_offset_portrait_settings">Desplazamiento inferior</string>
+    <string name="prefs_bottom_offset_landscape_settings">Desplazamiento inferior (horizontal)</string>
+    <string name="settings_category_key_repeat">Repetición y borrado de teclas</string>
+    <string name="prefs_key_repeat_start_timeout">Retardo inicial de repetición</string>
+    <string name="prefs_key_repeat_interval">Intervalo de repetición</string>
+    <string name="settings_category_vibration">Respuesta háptica</string>
+    <string name="prefs_vibration_duration">Duración personalizada de vibración</string>
+    <string name="settings_category_popup_preview">Vista previa emergente</string>
+    <string name="prefs_key_preview_linger_timeout">Tiempo de descarte del Popup Preview</string>
+    <string name="settings_category_appearance_advanced">Pantalla y márgenes</string>
+    <string name="settings_category_clipboard_advanced">Límites del portapapeles</string>
+    <string name="prefs_clipboard_max_clips">Límite de clips en historial</string>
+    <string name="unit_clips"><xliff:g id="CLIPS">%d</xliff:g> clips</string>
     <string name="show_special_chars">Mostrar caracteres especiales</string>
     <string name="show_language_switch_key">Mostrar tecla de cambio de idioma</string>
     <string name="show_language_on_spacebar">Mostrar idioma en la barra espaciadora</string>
