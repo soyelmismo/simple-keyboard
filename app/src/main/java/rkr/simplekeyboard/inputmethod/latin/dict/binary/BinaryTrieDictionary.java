@@ -578,9 +578,18 @@ public class BinaryTrieDictionary {
         }
     }
 
+    private static final ThreadLocal<StringBuilder> sDfsStringBuilder = new ThreadLocal<StringBuilder>() {
+        @Override
+        protected StringBuilder initialValue() {
+            return new StringBuilder(64);
+        }
+    };
+
     public void forEachWord(WordConsumer consumer) {
         if (rootOffset <= 0 || consumer == null) return;
-        dfsTraverse(rootOffset, new StringBuilder(), consumer);
+        StringBuilder sb = sDfsStringBuilder.get();
+        sb.setLength(0);
+        dfsTraverse(rootOffset, sb, consumer);
     }
 
     private void dfsTraverse(int nodeOffset, StringBuilder sb, WordConsumer consumer) {

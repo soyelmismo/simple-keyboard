@@ -207,11 +207,18 @@ public final class StringUtils {
         }
         return true;
     }
+    private static final ThreadLocal<StringBuilder> sScratchStringBuilder = new ThreadLocal<StringBuilder>() {
+        @Override
+        protected StringBuilder initialValue() {
+            return new StringBuilder(64);
+        }
+    };
 
     // TODO: like capitalizeFirst*, this does not work perfectly for Dutch because of the IJ digraph
     // which should be capitalized together in *some* cases.
     public static String capitalizeEachWord(final String text, final Locale locale) {
-        final StringBuilder builder = new StringBuilder();
+        final StringBuilder builder = sScratchStringBuilder.get();
+        builder.setLength(0);
         boolean needsCapsNext = true;
         final int len = text.length();
         for (int i = 0; i < len; i = text.offsetByCodePoints(i, 1)) {
@@ -239,7 +246,8 @@ public final class StringUtils {
     }
 
     public static String toLowerCase(final String text, final Locale locale) {
-        final StringBuilder builder = new StringBuilder();
+        final StringBuilder builder = sScratchStringBuilder.get();
+        builder.setLength(0);
         final int len = text.length();
         for (int i = 0; i < len; i = text.offsetByCodePoints(i, 1)) {
             final String nextChar = text.substring(i, text.offsetByCodePoints(i, 1));
@@ -249,7 +257,8 @@ public final class StringUtils {
     }
 
     public static String toUpperCase(final String text, final Locale locale) {
-        final StringBuilder builder = new StringBuilder();
+        final StringBuilder builder = sScratchStringBuilder.get();
+        builder.setLength(0);
         final int len = text.length();
         for (int i = 0; i < len; i = text.offsetByCodePoints(i, 1)) {
             final String nextChar = text.substring(i, text.offsetByCodePoints(i, 1));
@@ -364,7 +373,9 @@ public final class StringUtils {
         if (s == null) {
             return "";
         }
-        final StringBuilder sb = new StringBuilder(s.length());
+        final StringBuilder sb = sScratchStringBuilder.get();
+        sb.setLength(0);
+        sb.ensureCapacity(s.length());
         for (int i = 0; i < s.length(); i++) {
             sb.append(removeAccents(s.charAt(i)));
         }
@@ -398,7 +409,9 @@ public final class StringUtils {
         if (i == len) {
             return s;
         }
-        final StringBuilder sb = new StringBuilder(len);
+        final StringBuilder sb = sScratchStringBuilder.get();
+        sb.setLength(0);
+        sb.ensureCapacity(len);
         if (i > 0) {
             sb.append(s, 0, i);
         }
