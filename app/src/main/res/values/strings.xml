@@ -162,7 +162,6 @@
     </string-array>
     <string name="show_suggestions">Show text suggestions</string>
     <string name="auto_correction_threshold">Auto-correction sensitivity</string>
-    <string name="auto_correction_threshold_summary">Spacebar corrects mistyped words based on selected aggressiveness</string>
     <string-array name="auto_correction_threshold_entries">
         <item>Off</item>
         <item>Modest</item>
@@ -225,8 +224,6 @@
     <string name="word_already_exists">Word already exists</string>
     <string name="block_word">Block word</string>
     <string name="block_word_hint">Enter word to block</string>
-    <string name="word_blocked">Word blocked</string>
-    <string name="selected_count">%d selected</string>
     <string name="select_all">Select all</string>
     <string name="deselect_all">Deselect all</string>
     <string name="delete_selected">Delete selected</string>

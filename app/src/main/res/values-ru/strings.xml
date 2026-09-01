@@ -111,7 +111,6 @@
     </string-array>
     <string name="show_suggestions">Показывать текстовые подсказки</string>
     <string name="auto_correction_threshold">Чувствительность автоисправления</string>
-    <string name="auto_correction_threshold_summary">Пробел исправляет опечатки в зависимости от выбранного уровня</string>
     <string-array name="auto_correction_threshold_entries">
         <item>Выкл</item>
         <item>Умеренная</item>
@@ -168,8 +167,6 @@
     <string name="word_already_exists">Слово уже существует</string>
     <string name="block_word">Заблокировать слово</string>
     <string name="block_word_hint">Введите слово для блокировки</string>
-    <string name="word_blocked">Слово заблокировано</string>
-    <string name="selected_count">Выбрано: %d</string>
     <string name="select_all">Выбрать всё</string>
     <string name="deselect_all">Снять выбор</string>
     <string name="delete_selected">Удалить выбранные</string>

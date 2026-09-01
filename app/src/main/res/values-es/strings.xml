@@ -111,7 +111,6 @@
     </string-array>
     <string name="show_suggestions">Mostrar sugerencias de texto</string>
     <string name="auto_correction_threshold">Sensibilidad de autocorrección</string>
-    <string name="auto_correction_threshold_summary">La barra espaciadora corrige palabras según la agresividad seleccionada</string>
     <string-array name="auto_correction_threshold_entries">
         <item>Desactivada</item>
         <item>Moderada</item>
@@ -168,8 +167,6 @@
     <string name="word_already_exists">La palabra ya existe</string>
     <string name="block_word">Bloquear palabra</string>
     <string name="block_word_hint">Ingresar palabra a bloquear</string>
-    <string name="word_blocked">Palabra bloqueada</string>
-    <string name="selected_count">%d seleccionados</string>
     <string name="select_all">Seleccionar todo</string>
     <string name="deselect_all">Deseleccionar todo</string>
     <string name="delete_selected">Eliminar seleccionados</string>
