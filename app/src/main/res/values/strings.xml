@@ -285,5 +285,7 @@
     <string name="backup_restore_success_words">Successfully restored %1$d preferences and %2$d personal words</string>
     <string name="backup_restore_error">Failed to restore backup: %s</string>
     <string name="backup_in_progress">Processing backup…</string>
+    <string name="no_recent_emojis" translatable="false">No recent emojis</string>
+    <string name="screenshot" translatable="false">Screenshot</string>
 </resources>
 

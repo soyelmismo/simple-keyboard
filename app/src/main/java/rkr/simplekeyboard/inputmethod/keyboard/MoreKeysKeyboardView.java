@@ -18,6 +18,7 @@
 package rkr.simplekeyboard.inputmethod.keyboard;
 
 import android.content.Context;
+import android.annotation.SuppressLint;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.util.AttributeSet;
@@ -247,6 +248,7 @@ public class MoreKeysKeyboardView extends KeyboardView implements MoreKeysPanel 
         return y - mOriginY;
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(final MotionEvent me) {
         final int action = me.getActionMasked();

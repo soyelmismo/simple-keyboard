@@ -318,11 +318,11 @@ public abstract class BaseUserDictionaryWordsFragment extends Fragment implement
             final boolean allSelected = mAdapter.isAllSelected();
             final MenuItem selectAllItem = menu.add(Menu.NONE, R.id.action_select_all, Menu.NONE,
                     allSelected ? R.string.deselect_all : R.string.select_all);
-            selectAllItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+            selectAllItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
 
             final MenuItem deleteSelectedItem = menu.add(Menu.NONE, R.id.action_delete_selected, Menu.NONE, getDeleteBatchButtonResId());
             deleteSelectedItem.setIcon(R.drawable.ic_delete);
-            deleteSelectedItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+            deleteSelectedItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
         }
     }
 

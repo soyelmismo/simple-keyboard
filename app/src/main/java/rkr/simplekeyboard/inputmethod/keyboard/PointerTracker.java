@@ -1108,7 +1108,7 @@ public final class PointerTracker implements PointerTrackerQueue.Element {
     }
 
     private void startKeyRepeatTimer(final int repeatCount) {
-        final SettingsValues settingsValues = Settings.getInstance().getCurrent();
+        final SettingsValues settingsValues = getGestureSettings();
         final int startTimeout = (settingsValues != null && settingsValues.mKeyRepeatStartTimeout > 0)
                 ? settingsValues.mKeyRepeatStartTimeout : sParams.mKeyRepeatStartTimeout;
         final int repeatInterval = (settingsValues != null && settingsValues.mKeyRepeatInterval > 0)

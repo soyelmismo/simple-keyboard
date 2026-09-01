@@ -225,7 +225,7 @@ public class EmojiPalettesView extends LinearLayout {
         mContentContainer.addView(mEmojiGridView);
 
         mEmptyRecentView = new TextView(context);
-        mEmptyRecentView.setText("No recent emojis");
+        mEmptyRecentView.setText(R.string.no_recent_emojis);
         mEmptyRecentView.setTextColor(mTextColor);
         mEmptyRecentView.setAlpha(0.5f);
         mEmptyRecentView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);

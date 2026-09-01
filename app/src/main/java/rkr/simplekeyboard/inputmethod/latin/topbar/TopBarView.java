@@ -343,7 +343,7 @@ public class TopBarView extends FrameLayout {
 
         setupSingleCenterPillMode();
 
-        mCenterSlot.setText("Screenshot");
+        mCenterSlot.setText(R.string.screenshot);
         if (thumbnail != null) {
             final androidx.core.graphics.drawable.RoundedBitmapDrawable roundedThumb =
                     androidx.core.graphics.drawable.RoundedBitmapDrawableFactory.create(getResources(), thumbnail);

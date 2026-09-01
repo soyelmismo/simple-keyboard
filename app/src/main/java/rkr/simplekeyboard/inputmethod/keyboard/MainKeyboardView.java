@@ -21,6 +21,7 @@ package rkr.simplekeyboard.inputmethod.keyboard;
 import android.animation.AnimatorInflater;
 import android.animation.ObjectAnimator;
 import android.content.Context;
+import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
@@ -493,6 +494,7 @@ public final class MainKeyboardView extends KeyboardView implements MoreKeysPane
         return mTimerHandler.isInDoubleTapShiftKeyTimeout();
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(final MotionEvent event) {
         if (getKeyboard() == null) {
