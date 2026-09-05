@@ -1627,6 +1627,21 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     }
 
     @Override
+    public int getMaxWidth() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            final android.view.WindowManager wm = (android.view.WindowManager) getSystemService(Context.WINDOW_SERVICE);
+            if (wm != null) {
+                return wm.getCurrentWindowMetrics().getBounds().width();
+            }
+        }
+        final android.view.Window window = getWindow().getWindow();
+        if (window != null && window.getDecorView() != null && window.getDecorView().getWidth() > 0) {
+            return window.getDecorView().getWidth();
+        }
+        return getResources().getDisplayMetrics().widthPixels;
+    }
+
+    @Override
     public void updateFullscreenMode() {
         super.updateFullscreenMode();
         updateSoftInputWindowLayoutParameters();
