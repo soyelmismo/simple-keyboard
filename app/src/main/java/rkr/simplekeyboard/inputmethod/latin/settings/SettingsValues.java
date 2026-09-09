@@ -37,6 +37,7 @@ public class SettingsValues {
     // From preferences, in the same order as xml/prefs.xml:
     public final boolean mAutoCap;
     public final boolean mAutoPeriodEnabled;
+    public final boolean mAutoStripPunctuationSpace;
     public final boolean mVibrateOn;
     public final boolean mSoundOn;
     public final boolean mKeyPreviewPopupOn;
@@ -84,6 +85,7 @@ public class SettingsValues {
         mHasHardwareKeyboard = false;
         mAutoCap = true;
         mAutoPeriodEnabled = false;
+        mAutoStripPunctuationSpace = true;
         mVibrateOn = true;
         mSoundOn = false;
         mKeyPreviewPopupOn = true;
@@ -128,6 +130,7 @@ public class SettingsValues {
         // Get the settings preferences
         mAutoCap = prefs.getBoolean(Settings.PREF_AUTO_CAP, true);
         mAutoPeriodEnabled = prefs.getBoolean(Settings.PREF_AUTO_PERIOD, false);
+        mAutoStripPunctuationSpace = prefs.getBoolean(Settings.PREF_AUTO_STRIP_PUNCTUATION_SPACE, true);
         mVibrateOn = Settings.readVibrationEnabled(prefs, res);
         mSoundOn = prefs.getBoolean(Settings.PREF_SOUND_ON, res.getBoolean(R.bool.config_default_sound_enabled));
         mKeyPreviewPopupOn = prefs.getBoolean(Settings.PREF_POPUP_ON, res.getBoolean(R.bool.config_default_key_preview_popup));

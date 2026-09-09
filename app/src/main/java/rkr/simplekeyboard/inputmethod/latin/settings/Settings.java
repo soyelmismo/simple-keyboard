@@ -52,6 +52,7 @@ public final class Settings extends BroadcastReceiver implements SharedPreferenc
     // In the same order as xml/prefs.xml
     public static final String PREF_AUTO_CAP = "auto_cap";
     public static final String PREF_AUTO_PERIOD = "auto_period";
+    public static final String PREF_AUTO_STRIP_PUNCTUATION_SPACE = "auto_strip_punctuation_space";
     public static final String PREF_VIBRATE_ON = "vibrate_on";
     public static final String PREF_SOUND_ON = "sound_on";
     public static final String PREF_POPUP_ON = "popup_on";
@@ -252,6 +253,7 @@ public final class Settings extends BroadcastReceiver implements SharedPreferenc
 
         map.put(PREF_AUTO_CAP, boolApplier);
         map.put(PREF_AUTO_PERIOD, boolApplier);
+        map.put(PREF_AUTO_STRIP_PUNCTUATION_SPACE, boolApplier);
         map.put(PREF_SHOW_NUMBER_ROW, boolApplier);
         map.put(PREF_SHOW_SPECIAL_CHARS, boolApplier);
         map.put(PREF_SHOW_LANGUAGE_SWITCH_KEY, boolApplier);

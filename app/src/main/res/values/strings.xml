@@ -50,6 +50,8 @@
     <string name="auto_cap_summary">Capitalize the first word of each sentence</string>
     <string name="auto_period">Double-space period</string>
     <string name="auto_period_summary">Double tapping spacebar inserts a period followed by a space</string>
+    <string name="auto_strip_punctuation_space">Auto-strip space before punctuation</string>
+    <string name="auto_strip_punctuation_space_summary">Automatically remove space before punctuation marks like period or comma</string>
 
     <!-- Preference for input language selection -->
     <string name="select_language">Languages</string>

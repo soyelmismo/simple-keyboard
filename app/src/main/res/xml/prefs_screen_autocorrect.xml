@@ -24,6 +24,12 @@
             android:defaultValue="false" />
 
         <SwitchPreferenceCompat
+            android:key="auto_strip_punctuation_space"
+            android:title="@string/auto_strip_punctuation_space"
+            android:summary="@string/auto_strip_punctuation_space_summary"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
             android:key="pref_show_suggestions"
             android:title="@string/show_suggestions"
             android:defaultValue="true" />

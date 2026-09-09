@@ -34,6 +34,8 @@
     <string name="auto_cap_summary">Escribir la primera letra de cada frase en mayúscula</string>
     <string name="auto_period">Punto al pulsar doble espacio</string>
     <string name="auto_period_summary">Tocar dos veces el espacio inserta un punto seguido de un espacio</string>
+    <string name="auto_strip_punctuation_space">Ajustar espacio antes de puntuación</string>
+    <string name="auto_strip_punctuation_space_summary">Eliminar automáticamente el espacio antes de signos como punto o coma</string>
     <string name="select_language">Idiomas</string>
     <string name="locale_name_en_GB">Inglés (Reino Unido)</string>
     <string name="locale_name_en_US">Inglés (EE. UU.)</string>
