@@ -448,7 +448,7 @@ public final class StringUtils {
 
     public static boolean shouldStripPrecedingSpace(final int codePoint) {
         if (codePoint == '.' || codePoint == ',' || codePoint == '?' || codePoint == '!'
-                || codePoint == ':' || codePoint == ';' || codePoint == ')' || codePoint == ']'
+                || codePoint == ';' || codePoint == ')' || codePoint == ']'
                 || codePoint == '}' || codePoint == '>' || codePoint == '%' || codePoint == '\u2026' /* … */
                 || codePoint == '\u201D' /* ” */ || codePoint == '\u2019' /* ’ */ || codePoint == '\u00BB' /* » */) {
             return true;

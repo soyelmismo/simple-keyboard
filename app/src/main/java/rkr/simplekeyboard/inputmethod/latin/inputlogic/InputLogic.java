@@ -101,7 +101,7 @@ public final class InputLogic {
         final String text = event.getTextToCommit().toString();
         final InputTransaction inputTransaction = new InputTransaction(settingsValues);
         if (text.length() > 0) {
-            stripPrecedingSpaceIfNeeded(text.codePointAt(0));
+            stripPrecedingSpaceIfNeeded(settingsValues, text.codePointAt(0));
         }
         mConnection.commitText(text, 1);
         // Space state must be updated before calling updateShiftState
@@ -109,14 +109,15 @@ public final class InputLogic {
         return inputTransaction;
     }
 
-    private void stripPrecedingSpaceIfNeeded(final int codePoint) {
-        if (StringUtils.shouldStripPrecedingSpace(codePoint)) {
-            final String textBefore = mConnection.getTextBeforeCursor(2, 0);
-            if (textBefore.length() >= 2
-                    && textBefore.charAt(textBefore.length() - 1) == ' '
-                    && !Character.isWhitespace(textBefore.charAt(textBefore.length() - 2))) {
-                mConnection.deleteTextBeforeCursor(1);
-            }
+    private void stripPrecedingSpaceIfNeeded(final SettingsValues settingsValues, final int codePoint) {
+        if (!settingsValues.mAutoStripPunctuationSpace || !StringUtils.shouldStripPrecedingSpace(codePoint)) {
+            return;
+        }
+        final String textBefore = mConnection.getTextBeforeCursor(2, 0);
+        if (textBefore.length() >= 2
+                && textBefore.charAt(textBefore.length() - 1) == ' '
+                && !Character.isWhitespace(textBefore.charAt(textBefore.length() - 2))) {
+            mConnection.deleteTextBeforeCursor(1);
         }
     }
 
@@ -308,7 +309,7 @@ public final class InputLogic {
      */
     private void handleSeparatorEvent(final Event event, final InputTransaction inputTransaction) {
         final int codePoint = event.mCodePoint;
-        stripPrecedingSpaceIfNeeded(codePoint);
+        stripPrecedingSpaceIfNeeded(inputTransaction.mSettingsValues, codePoint);
         sendKeyCodePoint(codePoint);
 
         inputTransaction.requireShiftUpdate(InputTransaction.SHIFT_UPDATE_NOW);

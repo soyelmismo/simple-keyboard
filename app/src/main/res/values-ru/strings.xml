@@ -34,6 +34,8 @@
     <string name="auto_cap_summary">Писать первое слово каждого предложения с заглавной буквы</string>
     <string name="auto_period">Точка по двойному пробелу</string>
     <string name="auto_period_summary">Двойное нажатие пробела вставляет точку с пробелом</string>
+    <string name="auto_strip_punctuation_space">Удалять пробел перед пунктуацией</string>
+    <string name="auto_strip_punctuation_space_summary">Автоматически удалять пробел перед знаками препинания</string>
     <string name="select_language">Языки</string>
     <string name="locale_name_en_GB">Английский (Великобритания)</string>
     <string name="locale_name_en_US">Английский (США)</string>

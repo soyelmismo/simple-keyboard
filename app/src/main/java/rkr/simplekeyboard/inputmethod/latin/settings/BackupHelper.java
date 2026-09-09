@@ -113,6 +113,7 @@ public final class BackupHelper {
         // Booleans
         map.put(Settings.PREF_AUTO_CAP, PrefType.BOOLEAN);
         map.put(Settings.PREF_AUTO_PERIOD, PrefType.BOOLEAN);
+        map.put(Settings.PREF_AUTO_STRIP_PUNCTUATION_SPACE, PrefType.BOOLEAN);
         map.put(Settings.PREF_VIBRATE_ON, PrefType.BOOLEAN);
         map.put(Settings.PREF_SOUND_ON, PrefType.BOOLEAN);
         map.put(Settings.PREF_POPUP_ON, PrefType.BOOLEAN);

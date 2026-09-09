@@ -240,7 +240,6 @@ public class StringUtilsTest {
         assertTrue(StringUtils.shouldStripPrecedingSpace(','));
         assertTrue(StringUtils.shouldStripPrecedingSpace('?'));
         assertTrue(StringUtils.shouldStripPrecedingSpace('!'));
-        assertTrue(StringUtils.shouldStripPrecedingSpace(':'));
         assertTrue(StringUtils.shouldStripPrecedingSpace(';'));
         assertTrue(StringUtils.shouldStripPrecedingSpace(')'));
         assertTrue(StringUtils.shouldStripPrecedingSpace(']'));
@@ -250,6 +249,7 @@ public class StringUtilsTest {
         assertTrue(StringUtils.shouldStripPrecedingSpace('\u201D')); // ”
         assertTrue(StringUtils.shouldStripPrecedingSpace('\u00BB')); // »
 
+        assertFalse(StringUtils.shouldStripPrecedingSpace(':'));
         assertFalse(StringUtils.shouldStripPrecedingSpace('('));
         assertFalse(StringUtils.shouldStripPrecedingSpace('['));
         assertFalse(StringUtils.shouldStripPrecedingSpace('{'));
