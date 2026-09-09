@@ -484,8 +484,17 @@ public class KeyboardView extends View {
         final float hintBaseline = computeHintBaseline(key, paint, keyHeight, labelBaseline, centerY, labelCharHeight);
 
         final float adjustmentY = params.mHintLabelVerticalAdjustment * labelCharHeight;
+        if (key.hasHintLabel()) {
+            final float roundedInsetX = rkr.simplekeyboard.inputmethod.keyboard.internal.KeyShapeHelper.getRoundedInsetRatioX(mKeyShape) * keyWidth;
+            final float maxHintWidth = keyWidth - hintX - roundedInsetX - mKeyHintLetterPadding;
+            final float hintWidth = paint.measureText(hintLabel);
+            if (maxHintWidth > 0 && hintWidth > maxHintWidth) {
+                paint.setTextScaleX(maxHintWidth / hintWidth);
+            }
+        }
         canvas.drawText(
                 hintLabel, 0, hintLabel.length(), hintX, hintBaseline + adjustmentY, paint);
+        paint.setTextScaleX(1.0f);
     }
 
     private float computeHintX(final Key key, final String hintLabel, final Paint paint,
@@ -493,6 +502,10 @@ public class KeyboardView extends View {
             final float labelCharWidth) {
         if (key.hasHintLabel()) {
             paint.setTextAlign(Align.LEFT);
+            if (key.isAlignLabelOffCenter()) {
+                final float centerX = keyWidth / 2.0f;
+                return centerX + Math.max(labelCharWidth * 0.4f, keyWidth * 0.04f);
+            }
             return labelX + params.mHintLabelOffCenterRatio * labelCharWidth;
         }
         paint.setTextAlign(Align.CENTER);
