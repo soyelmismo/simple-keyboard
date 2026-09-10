@@ -86,7 +86,12 @@ public final class ViewUtils {
         if (view == null) return;
         final Drawable bg = view.getBackground();
         if (bg instanceof GradientDrawable) {
-            ((GradientDrawable) bg.mutate()).setCornerRadius(cornerRadius);
+            final GradientDrawable gd = (GradientDrawable) bg;
+            // Cache last-applied radius to avoid mutate()+setCornerRadius() on every press,
+            // which would invalidate the drawable and force a re-draw of the view tree.
+            if (Float.compare(gd.getCornerRadius(), cornerRadius) != 0) {
+                ((GradientDrawable) gd.mutate()).setCornerRadius(cornerRadius);
+            }
         }
     }
 

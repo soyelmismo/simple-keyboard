@@ -19,41 +19,41 @@ package rkr.simplekeyboard.inputmethod.latin.utils;
 
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewGroup.MarginLayoutParams;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.widget.RelativeLayout;
 
 public final class ViewLayoutUtils {
     private ViewLayoutUtils() {
         // This utility class is not publicly instantiable.
     }
 
-    public static MarginLayoutParams newLayoutParam(final ViewGroup placer, final int width,
-            final int height) {
-        if (placer instanceof FrameLayout) {
-            return new FrameLayout.LayoutParams(width, height);
-        } else if (placer instanceof RelativeLayout) {
-            return new RelativeLayout.LayoutParams(width, height);
-        } else if (placer == null) {
-            throw new NullPointerException("placer is null");
-        } else {
-            throw new IllegalArgumentException("placer is neither FrameLayout nor RelativeLayout: "
-                    + placer.getClass().getName());
-        }
-    }
-
+    /**
+     * Positions a view via {@link View#layout(int, int, int, int)} and translation without
+     * touching {@link View#setLayoutParams} on the hot path. LayoutParams (with width/height)
+     * must have been assigned once when the view was added to its parent; mutating width/height
+     * or re-applying setLayoutParams() triggers {@code requestLayout()} up the tree.
+     *
+     * <p>For the key-preview path the placer is a full-window container that does not
+     * consume margins or layout params from preview children. We enforce the view dimensions
+     * at {@code (0, 0, w, h)} and position it via {@link View#setTranslationX(float)} /
+     * {@link View#setTranslationY(float)}. Calling {@code layout(x, y, x + w, y + h)} together
+     * with {@code setTranslationX(x)} would shift the view by {@code 2 * x} because Android
+     * computes visual position as {@code left + translationX}.
+     */
     public static void placeViewAt(final View view, final int x, final int y, final int w,
             final int h) {
         final ViewGroup.LayoutParams lp = view.getLayoutParams();
-        if (lp instanceof MarginLayoutParams) {
-            final MarginLayoutParams marginLayoutParams = (MarginLayoutParams)lp;
-            marginLayoutParams.width = w;
-            marginLayoutParams.height = h;
-            marginLayoutParams.setMargins(x, y, -50, 0);
-            view.setLayoutParams(marginLayoutParams);
+        if (lp instanceof ViewGroup.MarginLayoutParams) {
+            final ViewGroup.MarginLayoutParams marginLayoutParams = (ViewGroup.MarginLayoutParams) lp;
+            if (marginLayoutParams.leftMargin != x || marginLayoutParams.topMargin != y
+                    || marginLayoutParams.width != w || marginLayoutParams.height != h) {
+                marginLayoutParams.width = w;
+                marginLayoutParams.height = h;
+                marginLayoutParams.setMargins(x, y, -50, 0);
+                view.setLayoutParams(marginLayoutParams);
+            }
         }
         view.layout(x, y, x + w, y + h);
     }

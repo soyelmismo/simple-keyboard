@@ -130,6 +130,8 @@ public final class InputLogic {
      */
     public void onUpdateSelection(final int newSelStart, final int newSelEnd) {
         mConnection.updateSelection(newSelStart, newSelEnd);
+        // Selection moved externally: any intra-event IPC snapshot is now at the wrong cursor.
+        mConnection.invalidateReadSnapshots();
     }
 
     public void reloadTextCache() {

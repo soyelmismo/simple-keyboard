@@ -39,6 +39,12 @@ import rkr.simplekeyboard.inputmethod.latin.utils.ViewUtils;
 public class KeyPreviewView extends AppCompatTextView {
     private final Rect mBackgroundPadding = new Rect();
     private static final HashSet<String> sNoScaleXTextSet = new HashSet<>();
+    // Cached last background color applied via setColor() so we skip the filter invalidation
+    // when the same value (typically Color.TRANSPARENT) is applied on every press.
+    private int mLastBackgroundColor = Color.TRANSPARENT;
+    private boolean mHasAppliedColor = false;
+    // Cached last corner radius applied to the GradientDrawable background.
+    private float mLastCornerRadius = Float.NaN;
 
     public KeyPreviewView(final Context context, final AttributeSet attrs) {
         this(context, attrs, 0);
@@ -66,7 +72,12 @@ public class KeyPreviewView extends AppCompatTextView {
         // TODO Should take care of temporaryShiftLabel here.
         setTextAndScaleX(key.getPreviewLabel());
         setColor(backgroundColor);
-        ViewUtils.setGradientCornerRadius(this, cornerRadius);
+        // Only apply the corner-radius change when it actually changed. The drawable's mutate()
+        // path invalidates the drawable cache and would otherwise run on every press.
+        if (Float.compare(mLastCornerRadius, cornerRadius) != 0) {
+            ViewUtils.setGradientCornerRadius(this, cornerRadius);
+            mLastCornerRadius = cornerRadius;
+        }
     }
 
     private void setTextAndScaleX(final String text) {
@@ -93,13 +104,23 @@ public class KeyPreviewView extends AppCompatTextView {
     }
 
     private void setColor(final int backgroundColor) {
+        // All current callers pass Color.TRANSPARENT (see MainKeyboardView#showKeyPreview).
+        // We still defend against future use by applying the filter only when the alpha is
+        // meaningful AND the color has changed since the last call: avoids a drawable
+        // invalidation on every press in the hot path.
+        if (Color.alpha(backgroundColor) <= 0) {
+            return;
+        }
+        if (mHasAppliedColor && mLastBackgroundColor == backgroundColor) {
+            return;
+        }
         final Drawable background = getBackground();
         if (background == null) {
             return;
         }
-        if (Color.alpha(backgroundColor) > 0) {
-            background.setColorFilter(backgroundColor, PorterDuff.Mode.OVERLAY);
-        }
+        background.setColorFilter(backgroundColor, PorterDuff.Mode.OVERLAY);
+        mLastBackgroundColor = backgroundColor;
+        mHasAppliedColor = true;
     }
 
     public static void clearTextCache() {

@@ -70,15 +70,39 @@ public final class RichInputConnection {
      */
     private int mExpectedSelEnd = INVALID_CURSOR_POSITION; // in chars, not code points
     /**
-     * This contains the committed text immediately preceding the cursor and the composing
-     * text, if any. It is refreshed when the cursor moves by calling upon the TextView.
+     * Long-lived cache of the text immediately before the cursor. It is updated synchronously by
+     * {@link #commitText} and the optimistic key handlers, and asynchronously by
+     * {@link #reloadTextCache} on the background thread. Declared volatile so the background
+     * writes are visible to UI-thread readers without locking. String is immutable, and reference
+     * assignment is atomic per JLS §17.7, so volatile is sufficient (no torn reads).
      */
-    private String mTextBeforeCursor = "";
-    private String mTextAfterCursor = "";
-    private String mTextSelection = "";
+    private volatile String mTextBeforeCursor = "";
+    /**
+     * Long-lived cache of the text after the cursor. Refreshed by the background thread only
+     * (no synchronous update on commit). Declared volatile for the same reasons as
+     * {@link #mTextBeforeCursor}.
+     */
+    private volatile String mTextAfterCursor = "";
+    private volatile String mTextSelection = "";
+
+    /**
+     * Short-lived intra-event read snapshots. They hold the most recent IPC result within the
+     * current event so repeated {@code getTextBeforeCursor}/{@code getTextAfterCursor} requests
+     * do not re-issue Binder transactions. The snapshots are invalidated explicitly by
+     * {@link #invalidateReadSnapshots()} on every write path
+     * (commitText, deleteTextBeforeCursor, setSelection, sendKeyEvent that mutates, etc.) so we
+     * never serve stale data after a write. Stored in single-element arrays to avoid extra
+     * allocations on hot paths.
+     */
+    private final String[] mBeforeReadSnapshot = new String[1];
+    private final int[] mBeforeReadSnapshotLen = new int[1];
+    private final boolean[] mBeforeReadSnapshotComplete = new boolean[1];
+    private final String[] mAfterReadSnapshot = new String[1];
+    private final int[] mAfterReadSnapshotLen = new int[1];
+    private final boolean[] mAfterReadSnapshotComplete = new boolean[1];
 
     private final LatinIME mLatinIME;
-    private InputConnection mIC;
+    private volatile InputConnection mIC;
     private int mNestLevel;
     private final ExecutorService mBackgroundThread;
 
@@ -97,7 +121,11 @@ public final class RichInputConnection {
         if (++mNestLevel == 1) {
             mIC = mLatinIME.getCurrentInputConnection();
             if (isConnected()) {
-                mIC.beginBatchEdit();
+                try {
+                    mIC.beginBatchEdit();
+                } catch (Exception ignored) {
+                    Log.w(TAG, "InputConnection failed", ignored);
+                }
             }
         } else {
             Log.e(TAG, "Nest level too deep : " + mNestLevel);
@@ -107,7 +135,11 @@ public final class RichInputConnection {
     public void endBatchEdit() {
         if (mNestLevel <= 0) Log.e(TAG, "Batch edit not in progress!"); // TODO: exception instead
         if (--mNestLevel == 0 && isConnected()) {
-            mIC.endBatchEdit();
+            try {
+                mIC.endBatchEdit();
+            } catch (Exception ignored) {
+                Log.w(TAG, "InputConnection failed", ignored);
+            }
         }
     }
 
@@ -123,12 +155,16 @@ public final class RichInputConnection {
             mTextBeforeCursor = "";
             mTextAfterCursor = "";
             mTextSelection = "";
+            invalidateReadSnapshots();
             return;
         }
         final CharSequence text = textAroundCursor.getText();
         mTextBeforeCursor = text.subSequence(0, textAroundCursor.getSelectionStart()).toString();
         mTextSelection = text.subSequence(textAroundCursor.getSelectionStart(), textAroundCursor.getSelectionEnd()).toString();
         mTextAfterCursor = text.subSequence(textAroundCursor.getSelectionEnd(), text.length()).toString();
+        // Background reload refreshed the long-lived cache; the snapshot, if any, was taken at
+        // the prior cursor state and must be discarded.
+        invalidateReadSnapshots();
     }
 
     /**
@@ -214,9 +250,11 @@ public final class RichInputConnection {
         if (null == textBeforeCursor) {
             Log.e(TAG, "Unable get text before cursor.");
             mTextBeforeCursor = "";
+            invalidateReadSnapshots();
             return false;
         }
         mTextBeforeCursor = textBeforeCursor.toString();
+        invalidateReadSnapshots();
         return true;
     }
 
@@ -232,6 +270,7 @@ public final class RichInputConnection {
         } else {
             mTextAfterCursor = textAfterCursor.toString();
         }
+        invalidateReadSnapshots();
         return true;
     }
 
@@ -260,6 +299,7 @@ public final class RichInputConnection {
         mTextBeforeCursor = "";
         mTextSelection = "";
         mTextAfterCursor = "";
+        invalidateReadSnapshots();
     }
 
     private void advanceExpectedSelection(final int delta) {
@@ -300,6 +340,9 @@ public final class RichInputConnection {
         // middle of the composing word mComposingText only holds the part of the composing text
         // that is before the cursor, so this actually works, but it's terribly confusing. Fix this.
         advanceExpectedSelection(text.length());
+        // Invalidate any pre-write IPC snapshot; the cache was extended optimistically above so
+        // subsequent reads must be derived from mTextBeforeCursor, not from the stale snapshot.
+        invalidateReadSnapshots();
         if (isConnected()) {
             final EditorInfo editorInfo = mLatinIME.getCurrentInputEditorInfo();
             if (editorInfo != null && editorInfo.inputType == android.text.InputType.TYPE_NULL) {
@@ -307,7 +350,11 @@ public final class RichInputConnection {
                     mLatinIME.sendKeyChar(text.charAt(i));
                 }
             } else {
-                mIC.commitText(text, newCursorPosition);
+                try {
+                    mIC.commitText(text, newCursorPosition);
+                } catch (Exception ignored) {
+                    Log.w(TAG, "InputConnection failed", ignored);
+                }
             }
         }
     }
@@ -316,12 +363,49 @@ public final class RichInputConnection {
         return mTextSelection;
     }
 
+    /**
+     * Invalidate the intra-event read snapshots. Called on every write path so subsequent reads
+     * in the same event do not reuse pre-write data. Also called from lifecycle hooks
+     * (onUpdateSelection, clearCaches, reloadTextCache) so external cursor moves invalidate us.
+     */
+    public void invalidateReadSnapshots() {
+        mBeforeReadSnapshot[0] = null;
+        mBeforeReadSnapshotLen[0] = 0;
+        mBeforeReadSnapshotComplete[0] = false;
+        mAfterReadSnapshot[0] = null;
+        mAfterReadSnapshotLen[0] = 0;
+        mAfterReadSnapshotComplete[0] = false;
+    }
+
+    /**
+     * Read up to {@code maxChars} chars before the cursor. Prefers the in-event snapshot, then
+     * the long-lived cache (kept fresh by {@link #commitText} and the background reload),
+     * falling back to a single Binder IPC when both are too short. Same-length repeated reads
+     * within one event are served from the snapshot without IPC.
+     */
     private String getCachedOrFetchTextBefore(final int maxChars) {
+        final String snap = mBeforeReadSnapshot[0];
+        if (snap != null) {
+            if (mBeforeReadSnapshotComplete[0] || mBeforeReadSnapshotLen[0] >= maxChars) {
+                // IPC returned the tail of pre-cursor text; substring the last maxChars.
+                final int take = Math.min(maxChars, snap.length());
+                return snap.substring(snap.length() - take);
+            }
+        }
+        final String cached = mTextBeforeCursor;
+        if (cached != null && cached.length() >= maxChars) {
+            return cached.substring(cached.length() - maxChars);
+        }
         if (isConnected()) {
             try {
                 final CharSequence cs = mIC.getTextBeforeCursor(maxChars, 0);
                 if (cs != null) {
                     final String str = cs.toString();
+                    mBeforeReadSnapshot[0] = str;
+                    mBeforeReadSnapshotLen[0] = str.length();
+                    // If the IPC returned less than requested we know we captured the full
+                    // pre-cursor content, so subsequent same-event reads need no further IPC.
+                    mBeforeReadSnapshotComplete[0] = str.length() < maxChars;
                     mTextBeforeCursor = str;
                     return str;
                 }
@@ -329,19 +413,37 @@ public final class RichInputConnection {
                 Log.w(TAG, "InputConnection failed", ignored);
             }
         }
-        if (mTextBeforeCursor != null && !mTextBeforeCursor.isEmpty()) {
-            final int len = Math.min(maxChars, mTextBeforeCursor.length());
-            return mTextBeforeCursor.substring(mTextBeforeCursor.length() - len);
+        if (cached != null && !cached.isEmpty()) {
+            return cached;
         }
         return "";
     }
 
+    /**
+     * Read up to {@code maxChars} chars after the cursor. Same dedup strategy as
+     * {@link #getCachedOrFetchTextBefore(int)}.
+     */
     private String getCachedOrFetchTextAfter(final int maxChars) {
+        final String snap = mAfterReadSnapshot[0];
+        if (snap != null) {
+            if (mAfterReadSnapshotComplete[0] || mAfterReadSnapshotLen[0] >= maxChars) {
+                // IPC returned the head of post-cursor text; substring the first maxChars.
+                final int take = Math.min(maxChars, snap.length());
+                return snap.substring(0, take);
+            }
+        }
+        final String cached = mTextAfterCursor;
+        if (cached != null && cached.length() >= maxChars) {
+            return cached.substring(0, maxChars);
+        }
         if (isConnected()) {
             try {
                 final CharSequence cs = mIC.getTextAfterCursor(maxChars, 0);
                 if (cs != null) {
                     final String str = cs.toString();
+                    mAfterReadSnapshot[0] = str;
+                    mAfterReadSnapshotLen[0] = str.length();
+                    mAfterReadSnapshotComplete[0] = str.length() < maxChars;
                     mTextAfterCursor = str;
                     return str;
                 }
@@ -349,9 +451,34 @@ public final class RichInputConnection {
                 Log.w(TAG, "InputConnection failed", ignored);
             }
         }
-        if (mTextAfterCursor != null && !mTextAfterCursor.isEmpty()) {
-            final int len = Math.min(maxChars, mTextAfterCursor.length());
-            return mTextAfterCursor.substring(0, len);
+        if (cached != null && !cached.isEmpty()) {
+            final int len = Math.min(maxChars, cached.length());
+            return cached.substring(0, len);
+        }
+        return "";
+    }
+
+    /**
+     * Bypasses the cache and always issues a fresh IPC for {@code maxChars} chars after the
+     * cursor. Reserved for callers that drive deletion (e.g. {@link #commitSuggestion}) where
+     * a stale read would corrupt the editor.
+     */
+    private String fetchFreshTextAfter(final int maxChars) {
+        if (!isConnected()) {
+            return "";
+        }
+        try {
+            final CharSequence cs = mIC.getTextAfterCursor(maxChars, 0);
+            if (cs != null) {
+                final String str = cs.toString();
+                mAfterReadSnapshot[0] = str;
+                mAfterReadSnapshotLen[0] = str.length();
+                mAfterReadSnapshotComplete[0] = str.length() < maxChars;
+                mTextAfterCursor = str;
+                return str;
+            }
+        } catch (Exception ignored) {
+            Log.w(TAG, "InputConnection failed", ignored);
         }
         return "";
     }
@@ -430,7 +557,20 @@ public final class RichInputConnection {
 
     public void commitSuggestion(final CharSequence suggestion) {
         final String before = getWordBeforeCursor();
-        final String after = getWordAfterCursor();
+        // For the post-cursor word we bypass the dedup cache: this value drives
+        // mIC.deleteSurroundingText(0, after.length()) and a stale read would corrupt the editor.
+        String after = "";
+        final String freshAfter = fetchFreshTextAfter(40);
+        if (!freshAfter.isEmpty()) {
+            int i = 0;
+            while (i < freshAfter.length()) {
+                if (isWordAfterCursorBoundaryChar(freshAfter.charAt(i))) {
+                    break;
+                }
+                i++;
+            }
+            after = freshAfter.substring(0, i);
+        }
         if (!before.isEmpty()) {
             deleteTextBeforeCursor(before.length());
         }
@@ -484,10 +624,12 @@ public final class RichInputConnection {
     public void replaceText(final int startPosition, final int endPosition, CharSequence text) {
         if (mExpectedSelStart != mExpectedSelEnd) {
             Log.e(TAG, "replaceText called with text range selected");
+            invalidateReadSnapshots();
             return;
         }
         if (mExpectedSelStart != startPosition) {
             Log.e(TAG, "replaceText called with range not starting with current cursor position");
+            invalidateReadSnapshots();
             return;
         }
 
@@ -495,6 +637,7 @@ public final class RichInputConnection {
         final String textAfterCursor = mTextAfterCursor;
         if (textAfterCursor.length() < numCharsSelected) {
             Log.e(TAG, "replaceText called with range longer than current text");
+            invalidateReadSnapshots();
             return;
         }
         mTextAfterCursor = text + textAfterCursor.substring(numCharsSelected);
@@ -503,12 +646,22 @@ public final class RichInputConnection {
             mLatinIME.mRichImm.resetSubtypeCycleOrder();
         }
 
-        if (BuildCompatUtils.isAtLeastUpsideDownCake()) {
-            mIC.replaceText(startPosition, endPosition, text, 0, null);
-        } else {
-            mIC.deleteSurroundingText(0, numCharsSelected);
-            mIC.commitText(text, 0);
+        if (!isConnected()) {
+            Log.w(TAG, "replaceText: InputConnection not connected");
+            invalidateReadSnapshots();
+            return;
         }
+        try {
+            if (BuildCompatUtils.isAtLeastUpsideDownCake()) {
+                mIC.replaceText(startPosition, endPosition, text, 0, null);
+            } else {
+                mIC.deleteSurroundingText(0, numCharsSelected);
+                mIC.commitText(text, 0);
+            }
+        } catch (Exception ignored) {
+            Log.w(TAG, "InputConnection failed", ignored);
+        }
+        invalidateReadSnapshots();
     }
 
     public void deleteTextBeforeCursor(final int numChars) {
@@ -519,8 +672,17 @@ public final class RichInputConnection {
         if (mExpectedSelStart >= numChars) {
             advanceExpectedSelection(-numChars);
         }
-
-        mIC.deleteSurroundingText(numChars, 0);
+        if (!isConnected()) {
+            Log.w(TAG, "deleteTextBeforeCursor: InputConnection not connected");
+            invalidateReadSnapshots();
+            return;
+        }
+        try {
+            mIC.deleteSurroundingText(numChars, 0);
+        } catch (Exception ignored) {
+            Log.w(TAG, "InputConnection failed", ignored);
+        }
+        invalidateReadSnapshots();
     }
 
     public void deleteSelectedText() {
@@ -533,14 +695,29 @@ public final class RichInputConnection {
         final int selectionLength = mExpectedSelEnd - mExpectedSelStart;
         mTextSelection = "";
         setSelection(mExpectedSelStart, mExpectedSelStart);
-        mIC.deleteSurroundingText(0, selectionLength);
+        if (!isConnected()) {
+            Log.w(TAG, "deleteSelectedText: InputConnection not connected");
+            endBatchEdit();
+            invalidateReadSnapshots();
+            return;
+        }
+        try {
+            mIC.deleteSurroundingText(0, selectionLength);
+        } catch (Exception ignored) {
+            Log.w(TAG, "InputConnection failed", ignored);
+        }
         endBatchEdit();
+        invalidateReadSnapshots();
     }
 
     public void performEditorAction(final int actionId) {
         mIC = mLatinIME.getCurrentInputConnection();
         if (isConnected()) {
-            mIC.performEditorAction(actionId);
+            try {
+                mIC.performEditorAction(actionId);
+            } catch (Exception ignored) {
+                Log.w(TAG, "InputConnection failed", ignored);
+            }
         }
     }
 
@@ -570,18 +747,28 @@ public final class RichInputConnection {
             return;
         }
 
-        mIC.performContextMenuAction(android.R.id.paste);
+        if (!isConnected()) {
+            Log.w(TAG, "pasteClipboard: InputConnection not connected");
+            return;
+        }
+        try {
+            mIC.performContextMenuAction(android.R.id.paste);
+        } catch (Exception ignored) {
+            Log.w(TAG, "InputConnection failed", ignored);
+        }
     }
 
     private void handleEnterKeyDown() {
         mTextBeforeCursor += "\n";
         advanceExpectedSelection(1);
+        invalidateReadSnapshots();
     }
 
     private void handleUnknownKeyDown(final String characters) {
         if (characters != null) {
             mTextBeforeCursor += characters;
             advanceExpectedSelection(characters.length());
+            invalidateReadSnapshots();
         }
     }
 
@@ -589,6 +776,7 @@ public final class RichInputConnection {
         if (mTextBeforeCursor != null && !mTextBeforeCursor.isEmpty()) {
             mTextBeforeCursor = mTextBeforeCursor.substring(0, mTextBeforeCursor.length() - 1);
             advanceExpectedSelection(-1);
+            invalidateReadSnapshots();
         }
     }
 
@@ -596,6 +784,7 @@ public final class RichInputConnection {
         final String text = StringUtils.newSingleCodePointString(unicodeChar);
         mTextBeforeCursor += text;
         advanceExpectedSelection(text.length());
+        invalidateReadSnapshots();
     }
 
     private void handleKeyDownEvent(final KeyEvent keyEvent) {
@@ -629,8 +818,13 @@ public final class RichInputConnection {
             handleKeyDownEvent(keyEvent);
         }
         if (isConnected()) {
-            mIC.sendKeyEvent(keyEvent);
+            try {
+                mIC.sendKeyEvent(keyEvent);
+            } catch (Exception ignored) {
+                Log.w(TAG, "InputConnection failed", ignored);
+            }
         }
+        invalidateReadSnapshots();
     }
 
     private static boolean isInvalidSelectionBounds(final int start, final int end) {
@@ -679,8 +873,15 @@ public final class RichInputConnection {
 
         mExpectedSelStart = start;
         mExpectedSelEnd = end;
+        // Snapshot was taken at the previous cursor position; the selection just moved, so it
+        // is stale by definition.
+        invalidateReadSnapshots();
         if (isConnected()) {
-            mIC.setSelection(start, end);
+            try {
+                mIC.setSelection(start, end);
+            } catch (Exception ignored) {
+                Log.w(TAG, "InputConnection failed", ignored);
+            }
         }
     }
 

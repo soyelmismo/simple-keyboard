@@ -20,12 +20,15 @@ package rkr.simplekeyboard.inputmethod.keyboard.internal;
 import android.animation.Animator;
 import android.animation.AnimatorInflater;
 import android.content.res.TypedArray;
+import android.util.Log;
 import android.view.View;
 import android.view.animation.AccelerateInterpolator;
 
 import rkr.simplekeyboard.inputmethod.R;
 
 public final class KeyPreviewDrawParams {
+    private static final String TAG = KeyPreviewDrawParams.class.getSimpleName();
+
     // XML attributes of {@link MainKeyboardView}.
     public final int mPreviewOffset;
     public final int mPreviewHeight;
@@ -34,6 +37,10 @@ public final class KeyPreviewDrawParams {
     private final int mDismissAnimatorResId;
     private int mLingerTimeout;
     private boolean mShowPopup = true;
+
+    // Inflated once per resource id and reused: every key press used to call
+    // AnimatorInflater.loadAnimator() which is expensive (XML parsing + reflection).
+    private Animator mDismissAnimatorPrototype;
 
     // The graphical geometry of the key preview.
     // <-width->
@@ -121,11 +128,51 @@ public final class KeyPreviewDrawParams {
     private static final AccelerateInterpolator ACCELERATE_INTERPOLATOR =
             new AccelerateInterpolator();
 
+    /**
+     * Lazily inflate the dismiss animator prototype from the XML resource id. Subsequent calls
+     * return the cached instance; this avoids the per-press XML parse + reflection cost of
+     * {@link AnimatorInflater#loadAnimator(android.content.Context, int)}.
+     */
+    private Animator getDismissAnimatorPrototype(final android.content.Context context) {
+        if (mDismissAnimatorPrototype != null) {
+            return mDismissAnimatorPrototype;
+        }
+        if (mDismissAnimatorResId == 0 || context == null) {
+            // No animator defined or context not yet known: caller will skip animation.
+            return null;
+        }
+        try {
+            mDismissAnimatorPrototype = AnimatorInflater.loadAnimator(context, mDismissAnimatorResId);
+        } catch (android.content.res.Resources.NotFoundException e) {
+            Log.e(TAG, "Dismiss animator resource id 0x"
+                    + Integer.toHexString(mDismissAnimatorResId) + " not found", e);
+            return null;
+        }
+        if (mDismissAnimatorPrototype == null) {
+            Log.w(TAG, "loadAnimator returned null for resId=0x"
+                    + Integer.toHexString(mDismissAnimatorResId));
+            return null;
+        }
+        mDismissAnimatorPrototype.setInterpolator(ACCELERATE_INTERPOLATOR);
+        return mDismissAnimatorPrototype;
+    }
+
+    /**
+     * Build a fresh, self-contained {@link Animator} bound to {@code target} for one dismiss
+     * cycle. The prototype is inflated once and reused via clone(), so the press path never
+     * calls {@link AnimatorInflater#loadAnimator(android.content.Context, int)}.
+     */
     public Animator createDismissAnimator(final View target) {
-        final Animator animator = AnimatorInflater.loadAnimator(
-                target.getContext(), mDismissAnimatorResId);
+        if (target == null) {
+            Log.w(TAG, "createDismissAnimator called with null target");
+            return null;
+        }
+        final Animator prototype = getDismissAnimatorPrototype(target.getContext());
+        if (prototype == null) {
+            return null;
+        }
+        final Animator animator = prototype.clone();
         animator.setTarget(target);
-        animator.setInterpolator(ACCELERATE_INTERPOLATOR);
         return animator;
     }
 }

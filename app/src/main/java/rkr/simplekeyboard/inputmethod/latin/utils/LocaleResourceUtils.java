@@ -38,6 +38,10 @@ public final class LocaleResourceUtils {
     private static volatile boolean sInitialized = false;
     private static final Object sInitializeLock = new Object();
     private static Resources sResources;
+    // Bumped whenever resource-backed display names may have changed (system locale change).
+    // Consumers that cache resolved display names include this generation in their cache keys
+    // instead of re-resolving (Locale + String allocation) on every frame.
+    private static volatile int sLocaleGeneration;
     // Exceptional locale whose name should be displayed in Locale.ROOT.
     private static final HashMap<String, Integer> sExceptionalLocaleDisplayedInRootLocale = new HashMap<>();
     // Exceptional locale to locale name resource id map.
@@ -63,11 +67,21 @@ public final class LocaleResourceUtils {
 
     public static void onLocalChange(final Context context) {
         sResources = context.getResources();
+        sLocaleGeneration++;
+    }
+
+    /**
+     * Returns a generation token that changes whenever resource-backed display names may have
+     * changed. Cache consumers compare it to detect staleness without re-resolving strings.
+     */
+    public static int getLocaleGeneration() {
+        return sLocaleGeneration;
     }
 
     private static void initLocked(final Context context) {
         final Resources res = context.getResources();
         sResources = res;
+        sLocaleGeneration++;
 
         final String[] exceptionalLocaleInRootLocale = res.getStringArray(
                 R.array.locale_displayed_in_root_locale);

@@ -71,6 +71,10 @@ public class MoreKeysKeyboardView extends KeyboardView implements MoreKeysPanel 
     }
 
     private GradientDrawable mActiveKeyDrawable;
+    // Cached corner radius for the current key shape; avoids Resources.getDimension() and
+    // mutate()-based drawable invalidation on every panel show / keyboard change.
+    private float mCachedPopupCornerRadius = -1.0f;
+    private String mCachedPopupCornerRadiusKeyShape;
 
     private GradientDrawable getActiveKeyDrawable() {
         if (mActiveKeyDrawable == null) {
@@ -82,10 +86,22 @@ public class MoreKeysKeyboardView extends KeyboardView implements MoreKeysPanel 
 
     private void updatePopupBackground() {
         final Context context = getContext();
-        final float cornerRadius = rkr.simplekeyboard.inputmethod.keyboard.internal.KeyShapeHelper.getCornerRadius(context, mKeyShape);
+        final float cornerRadius = getCachedPopupCornerRadius(context);
         rkr.simplekeyboard.inputmethod.latin.utils.ViewUtils.setGradientCornerRadius(this, cornerRadius);
         rkr.simplekeyboard.inputmethod.latin.utils.ViewUtils.setGradientCornerRadius(getContainerView(), cornerRadius);
         mActiveKeyDrawable = null; // Recreate lazily with updated theme/shape
+    }
+
+    private float getCachedPopupCornerRadius(final Context context) {
+        final String shape = mKeyShape;
+        if (mCachedPopupCornerRadius >= 0.0f && shape.equals(mCachedPopupCornerRadiusKeyShape)) {
+            return mCachedPopupCornerRadius;
+        }
+        final float radius = rkr.simplekeyboard.inputmethod.keyboard.internal.KeyShapeHelper
+                .getCornerRadius(context, shape);
+        mCachedPopupCornerRadius = radius;
+        mCachedPopupCornerRadiusKeyShape = shape;
+        return radius;
     }
 
     @Override

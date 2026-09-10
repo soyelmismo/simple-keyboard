@@ -164,11 +164,26 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
 
     private AlertDialog mOptionsDialog;
 
+    public static final class SuggestionsPayload {
+        public long seq;
+        public int boldIndex;
+        public int count;
+        public CharSequence s0;
+        public CharSequence s1;
+        public CharSequence s2;
+    }
+
+    private final SuggestionsPayload[] mSuggestionsPayloads = new SuggestionsPayload[] {
+            new SuggestionsPayload(), new SuggestionsPayload()
+    };
+    private int mSuggestionsPayloadIndex = 0;
+
     public final UIHandler mHandler = new UIHandler(this);
 
     public static final class UIHandler extends LeakGuardHandlerWrapper<LatinIME> {
         private static final int MSG_UPDATE_SHIFT_STATE = 0;
         private static final int MSG_PENDING_IMS_CALLBACK = 1;
+        private static final int MSG_UPDATE_SUGGESTIONS = 2;
         private static final int MSG_DEALLOCATE_MEMORY = 9;
 
         public UIHandler(final LatinIME ownerInstance) {
@@ -187,10 +202,40 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                 switcher.requestUpdatingShiftState();
                 latinIme.updateSuggestions();
                 break;
+            case MSG_UPDATE_SUGGESTIONS:
+                final SuggestionsPayload payload = (SuggestionsPayload) msg.obj;
+                if (payload != null && latinIme.mTopBarView != null) {
+                    if (payload.seq == latinIme.mSuggestionSeq.get()) {
+                        latinIme.mTopBarView.setSuggestions(
+                                payload.s0, payload.s1, payload.s2, payload.count, payload.boldIndex);
+                    }
+                }
+                break;
             case MSG_DEALLOCATE_MEMORY:
                 latinIme.deallocateMemory();
                 break;
             }
+        }
+
+        public void postSuggestionsUpdate(final long seq, final int boldIndex,
+                final CharSequence s0, final CharSequence s1, final CharSequence s2, final int count) {
+            removeMessages(MSG_UPDATE_SUGGESTIONS);
+            final LatinIME latinIme = getOwnerInstance();
+            if (latinIme == null) {
+                return;
+            }
+            final SuggestionsPayload payload;
+            synchronized (latinIme.mSuggestionsPayloads) {
+                latinIme.mSuggestionsPayloadIndex = (latinIme.mSuggestionsPayloadIndex + 1) % latinIme.mSuggestionsPayloads.length;
+                payload = latinIme.mSuggestionsPayloads[latinIme.mSuggestionsPayloadIndex];
+                payload.seq = seq;
+                payload.boldIndex = boldIndex;
+                payload.count = count;
+                payload.s0 = s0;
+                payload.s1 = s1;
+                payload.s2 = s2;
+            }
+            obtainMessage(MSG_UPDATE_SUGGESTIONS, payload).sendToTarget();
         }
 
         public void postUpdateShiftState() {
@@ -984,6 +1029,14 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         mScratchSuggestions.clear();
         mScratchMerged.clear();
         mScratchDeduplicationSet.clear();
+        synchronized (mSuggestionsPayloads) {
+            for (SuggestionsPayload payload : mSuggestionsPayloads) {
+                payload.s0 = null;
+                payload.s1 = null;
+                payload.s2 = null;
+                payload.count = 0;
+            }
+        }
         if (mClipboardHistoryManager != null) {
             mClipboardHistoryManager.deallocateMemory();
         }
@@ -1273,16 +1326,16 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                 return;
             }
             final java.util.List<CharSequence> nextWordPredictions = mPrefixDictionary.getNextWordPredictions(w1, w2, 3);
-            if (seq == mSuggestionSeq.get() && mTopBarView != null) {
-                mTopBarView.post(() -> {
-                    if (seq == mSuggestionSeq.get() && mTopBarView != null) {
-                        if (nextWordPredictions != null && !nextWordPredictions.isEmpty()) {
-                            mTopBarView.setSuggestions(nextWordPredictions, -1);
-                        } else {
-                            mTopBarView.setSuggestions(null, -1);
-                        }
-                    }
-                });
+            if (seq == mSuggestionSeq.get()) {
+                if (nextWordPredictions != null && !nextWordPredictions.isEmpty()) {
+                    final int count = nextWordPredictions.size();
+                    final CharSequence s0 = count > 0 ? nextWordPredictions.get(0) : null;
+                    final CharSequence s1 = count > 1 ? nextWordPredictions.get(1) : null;
+                    final CharSequence s2 = count > 2 ? nextWordPredictions.get(2) : null;
+                    mHandler.postSuggestionsUpdate(seq, -1, s0, s1, s2, count);
+                } else {
+                    mHandler.postSuggestionsUpdate(seq, -1, null, null, null, 0);
+                }
             }
         });
     }
@@ -1492,12 +1545,12 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             mPendingAutoCorrectionWord = null;
         }
 
-        if (seq == mSuggestionSeq.get() && mTopBarView != null) {
-            mTopBarView.post(() -> {
-                if (seq == mSuggestionSeq.get() && mTopBarView != null) {
-                    mTopBarView.setSuggestions(mScratchSuggestions, boldIndex);
-                }
-            });
+        if (seq == mSuggestionSeq.get()) {
+            final int count = mScratchSuggestions.size();
+            final CharSequence s0 = count > 0 ? mScratchSuggestions.get(0) : null;
+            final CharSequence s1 = count > 1 ? mScratchSuggestions.get(1) : null;
+            final CharSequence s2 = count > 2 ? mScratchSuggestions.get(2) : null;
+            mHandler.postSuggestionsUpdate(seq, boldIndex, s0, s1, s2, count);
         }
     }
 

@@ -18,7 +18,6 @@
 package rkr.simplekeyboard.inputmethod.keyboard.internal;
 
 import android.content.Context;
-import android.graphics.Canvas;
 import android.util.AttributeSet;
 import android.widget.RelativeLayout;
 
@@ -29,17 +28,13 @@ public final class DrawingPreviewPlacerView extends RelativeLayout {
 
     public DrawingPreviewPlacerView(final Context context, final AttributeSet attrs) {
         super(context, attrs);
-        setWillNotDraw(false);
+        // Default for ViewGroup is setWillNotDraw(true), which skips the (empty) draw pass.
+        // We keep that default: previews/panels are siblings drawn on top of us; we only host them.
         setClipChildren(false);
         setClipToPadding(false);
     }
 
     public void setKeyboardViewGeometry(final int[] originCoords) {
         CoordinateUtils.copy(mKeyboardViewOrigin, originCoords);
-    }
-
-    @Override
-    public void onDraw(final Canvas canvas) {
-        super.onDraw(canvas);
     }
 }

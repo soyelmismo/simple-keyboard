@@ -45,6 +45,7 @@ import rkr.simplekeyboard.inputmethod.keyboard.internal.KeyDrawParams;
 import rkr.simplekeyboard.inputmethod.keyboard.internal.KeyPreviewChoreographer;
 import rkr.simplekeyboard.inputmethod.keyboard.internal.KeyPreviewDrawParams;
 import rkr.simplekeyboard.inputmethod.keyboard.internal.KeyPreviewView;
+import rkr.simplekeyboard.inputmethod.keyboard.internal.KeyShapeHelper;
 import rkr.simplekeyboard.inputmethod.keyboard.internal.MoreKeySpec;
 import rkr.simplekeyboard.inputmethod.keyboard.internal.NonDistinctMultitouchHelper;
 import rkr.simplekeyboard.inputmethod.keyboard.internal.TimerHandler;
@@ -88,6 +89,25 @@ public final class MainKeyboardView extends KeyboardView implements MoreKeysPane
     private final DrawingPreviewPlacerView mDrawingPreviewPlacerView;
     private final int[] mOriginCoords = CoordinateUtils.newInstance();
     private final int[] mScratchCoordinates = CoordinateUtils.newInstance();
+    // Cached window-origin of the keyboard view. Refreshed only when the placer is installed
+    // or the view is detached/attached — never on the press path.
+    private boolean mOriginCoordsValid = false;
+
+    // Cached corner radius for the current key shape. Resolved once when the shape changes
+    // (via KeyboardView#setKeyboard -> updateKeyBackgrounds) and reused on every press.
+    private float mCachedCornerRadius = -1.0f;
+    private String mCachedCornerRadiusKeyShape;
+
+    // Cached spacebar language label keyed by (subtype, formatType, width, textSize,
+    // locale generation). Avoids per-frame Locale/String construction and text measurement
+    // during onDraw().
+    private Subtype mCachedSpacebarLabelSubtype;
+    private int mCachedSpacebarLabelFormatType = -1;
+    private int mCachedSpacebarLabelWidth = -1;
+    private int mCachedSpacebarLabelTextSize = -1;
+    private int mCachedSpacebarLabelLocaleGeneration = -1;
+    private String mCachedSpacebarLabel = "";
+    private float mCachedSpacebarLabelScaleX = 1.0f;
 
     // Key preview
     private final KeyPreviewDrawParams mKeyPreviewDrawParams;
@@ -257,6 +277,15 @@ public final class MainKeyboardView extends KeyboardView implements MoreKeysPane
         mSpaceKey = keyboard.getKey(Constants.CODE_SPACE);
         final int keyHeight = keyboard.mMostCommonKeyHeight;
         mLanguageOnSpacebarTextSize = keyHeight * mLanguageOnSpacebarTextRatio;
+        // The corner radius depends on mKeyShape, which KeyboardView#setKeyboard has just
+        // refreshed via updateKeyBackgrounds(). Invalidate the cached value here so the next
+        // press resolves the new shape's radius exactly once.
+        if (mCachedCornerRadiusKeyShape != null && !mCachedCornerRadiusKeyShape.equals(mKeyShape)) {
+            mCachedCornerRadius = -1.0f;
+        }
+        // Invalidate the cached spacebar label since width and text size may have changed.
+        mCachedSpacebarLabelWidth = -1;
+        mCachedSpacebarLabelTextSize = -1;
         final SettingsValues settingsValues = mSettings != null ? mSettings.getCurrent() : Settings.getInstance().getCurrent();
         final boolean showLanguageOnSpacebar = settingsValues == null || settingsValues.mShowLanguageOnSpacebar;
         final RichInputMethodManager richImm = mRichImm != null ? mRichImm : RichInputMethodManager.getInstance();
@@ -273,6 +302,11 @@ public final class MainKeyboardView extends KeyboardView implements MoreKeysPane
         mKeyPreviewDrawParams.setPopupEnabled(previewEnabled, delay);
     }
 
+    /**
+     * Refreshes the cached window origin of the keyboard view. Should only be called when
+     * the placer is freshly installed, or when the keyboard view is re-attached to a new
+     * window / re-laid-out by the system. Never call on the key-press path.
+     */
     private void locatePreviewPlacerView() {
         getLocationInWindow(mOriginCoords);
         mDrawingPreviewPlacerView.setKeyboardViewGeometry(mOriginCoords);
@@ -284,7 +318,7 @@ public final class MainKeyboardView extends KeyboardView implements MoreKeysPane
                 mDrawingPreviewPlacerView.layout(0, 0, w, h);
             }
         }
-        mDrawingPreviewPlacerView.bringToFront();
+        mOriginCoordsValid = true;
     }
 
     private void installPreviewPlacerView() {
@@ -302,6 +336,8 @@ public final class MainKeyboardView extends KeyboardView implements MoreKeysPane
         final ViewGroup currentParent = (ViewGroup) mDrawingPreviewPlacerView.getParent();
         if (currentParent != null) {
             if (currentParent == windowContentView) {
+                // Already installed: ensure z-order is on top without re-allocating.
+                mDrawingPreviewPlacerView.bringToFront();
                 return;
             }
             currentParent.removeView(mDrawingPreviewPlacerView);
@@ -313,6 +349,9 @@ public final class MainKeyboardView extends KeyboardView implements MoreKeysPane
         if (w > 0 && h > 0) {
             mDrawingPreviewPlacerView.layout(0, 0, w, h);
         }
+        // bringToFront() is expensive: it walks the parent's children and reorders z-order.
+        // Run only on (re-)install, never on the key-press path.
+        mDrawingPreviewPlacerView.bringToFront();
     }
 
     // Implements {@link DrawingProxy#onKeyPressed(Key,boolean)}.
@@ -336,14 +375,35 @@ public final class MainKeyboardView extends KeyboardView implements MoreKeysPane
             return;
         }
 
+        // First press after install: the placer is freshly added to the window, so its
+        // window-origin coordinates are not yet cached. installPreviewPlacerView() handles
+        // add+layout+bringToFront once, and we refresh mOriginCoords here exactly once.
         if (mDrawingPreviewPlacerView.getParent() == null) {
             installPreviewPlacerView();
+            locatePreviewPlacerView();
+        } else if (!mOriginCoordsValid) {
+            // Recover from a detach/attach cycle: re-cache origin before the press path.
+            locatePreviewPlacerView();
         }
-        locatePreviewPlacerView();
         final int backgroundColor = Color.TRANSPARENT;
-        final float cornerRadius = rkr.simplekeyboard.inputmethod.keyboard.internal.KeyShapeHelper.getCornerRadius(getContext(), mKeyShape);
+        final float cornerRadius = getCachedCornerRadius();
         mKeyPreviewChoreographer.placeAndShowKeyPreview(key, keyboard.mIconsSet, getKeyDrawParams(),
                 mOriginCoords, mDrawingPreviewPlacerView, isHardwareAccelerated(), backgroundColor, cornerRadius);
+    }
+
+    /**
+     * Returns the cached corner radius for the current key shape, resolving it via
+     * {@link KeyShapeHelper} only when the shape has changed since the last call.
+     */
+    private float getCachedCornerRadius() {
+        final String shape = mKeyShape;
+        if (mCachedCornerRadius >= 0.0f && shape.equals(mCachedCornerRadiusKeyShape)) {
+            return mCachedCornerRadius;
+        }
+        final float radius = KeyShapeHelper.getCornerRadius(getContext(), shape);
+        mCachedCornerRadius = radius;
+        mCachedCornerRadiusKeyShape = shape;
+        return radius;
     }
 
     private void dismissKeyPreviewWithoutDelay(final Key key) {
@@ -378,14 +438,29 @@ public final class MainKeyboardView extends KeyboardView implements MoreKeysPane
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         installPreviewPlacerView();
+        // Fresh install on a new window: force re-caching of window-origin on the next press.
+        mOriginCoordsValid = false;
     }
 
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
+        mOriginCoordsValid = false;
         mDrawingPreviewPlacerView.removeAllViews();
         if (mKeyPreviewChoreographer != null) {
             mKeyPreviewChoreographer.deallocate();
+        }
+    }
+
+    @Override
+    protected void onLayout(final boolean changed, final int left, final int top, final int right,
+            final int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+        // The keyboard view moved within the window; refresh the cached origin used by the
+        // key-preview placer. This keeps the cached value coherent across rotation/resize.
+        if (changed) {
+            getLocationInWindow(mOriginCoords);
+            mDrawingPreviewPlacerView.setKeyboardViewGeometry(mOriginCoords);
         }
     }
 
@@ -460,7 +535,15 @@ public final class MainKeyboardView extends KeyboardView implements MoreKeysPane
 
     @Override
     public void onShowMoreKeysPanel(final MoreKeysPanel panel) {
-        locatePreviewPlacerView();
+        // The panel must overlay the whole window. If the placer is not installed yet,
+        // install+locate now (once); otherwise just re-cache the origin (the placer may have
+        // been re-added to a new window after a detach/attach cycle).
+        if (mDrawingPreviewPlacerView.getParent() == null) {
+            installPreviewPlacerView();
+            locatePreviewPlacerView();
+        } else if (!mOriginCoordsValid) {
+            locatePreviewPlacerView();
+        }
         // Dismiss another {@link MoreKeysPanel} that may be being showed.
         onDismissMoreKeysPanel();
         // Dismiss all key previews that may be being showed.
@@ -563,6 +646,10 @@ public final class MainKeyboardView extends KeyboardView implements MoreKeysPane
             final int languageOnSpacebarFormatType) {
         if (subtypeChanged) {
             KeyPreviewView.clearTextCache();
+            // Force a re-resolve on the next draw; the new subtype (and possibly its
+            // language display name) invalidates the cached spacebar label.
+            mCachedSpacebarLabelSubtype = null;
+            mCachedSpacebarLabelFormatType = -1;
         }
         mLanguageOnSpacebarFormatType = languageOnSpacebarFormatType;
         invalidateKey(mSpaceKey);
@@ -625,6 +712,34 @@ public final class MainKeyboardView extends KeyboardView implements MoreKeysPane
         return "";
     }
 
+    /**
+     * Returns the spacebar language label, cached by (subtype, formatType, width, textSize,
+     * locale generation). Resolution builds a {@link Locale} + display String and measures
+     * text several times; the cache keeps that work off the per-frame draw path.
+     */
+    private String getCachedSpacebarLabel(final Paint paint, final Subtype subtype,
+            final int width) {
+        final int textSizeBits = Float.floatToIntBits(mLanguageOnSpacebarTextSize);
+        final int localeGeneration = LocaleResourceUtils.getLocaleGeneration();
+        if (subtype == mCachedSpacebarLabelSubtype
+                && mCachedSpacebarLabelFormatType == mLanguageOnSpacebarFormatType
+                && mCachedSpacebarLabelWidth == width
+                && mCachedSpacebarLabelTextSize == textSizeBits
+                && mCachedSpacebarLabelLocaleGeneration == localeGeneration) {
+            return mCachedSpacebarLabel;
+        }
+        mCachedSpacebarLabel = layoutLanguageOnSpacebar(paint, subtype, width);
+        // fitsTextIntoWidth() may leave a fitted scaleX on the paint; preserve it so the
+        // cached rendering matches the uncached path exactly.
+        mCachedSpacebarLabelScaleX = paint.getTextScaleX();
+        mCachedSpacebarLabelSubtype = subtype;
+        mCachedSpacebarLabelFormatType = mLanguageOnSpacebarFormatType;
+        mCachedSpacebarLabelWidth = width;
+        mCachedSpacebarLabelTextSize = textSizeBits;
+        mCachedSpacebarLabelLocaleGeneration = localeGeneration;
+        return mCachedSpacebarLabel;
+    }
+
     private void drawLanguageOnSpacebar(final Key key, final Canvas canvas, final Paint paint) {
         final Keyboard keyboard = getKeyboard();
         if (keyboard == null) {
@@ -635,7 +750,8 @@ public final class MainKeyboardView extends KeyboardView implements MoreKeysPane
         paint.setTextAlign(Align.CENTER);
         paint.setTypeface(Typeface.DEFAULT);
         paint.setTextSize(mLanguageOnSpacebarTextSize);
-        final String language = layoutLanguageOnSpacebar(paint, keyboard.mId.mSubtype, width);
+        final String language = getCachedSpacebarLabel(paint, keyboard.mId.mSubtype, width);
+        paint.setTextScaleX(mCachedSpacebarLabelScaleX);
         // Draw language text with shadow
         final float descent = paint.descent();
         final float textHeight = -paint.ascent() + descent;

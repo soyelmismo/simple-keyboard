@@ -71,6 +71,9 @@ public class TopBarView extends FrameLayout {
     };
 
     private int mTextColor = 0xFFCCCCCC;
+    private int mDefaultSlotPaddingH;
+    private int mPillSlotPaddingH;
+    private int mTargetHeightPx;
 
     public TopBarView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -85,6 +88,9 @@ public class TopBarView extends FrameLayout {
         ViewUtils.applyKeyboardBackground(this);
 
         mTextColor = ViewUtils.getKeyTextColor(context);
+        mDefaultSlotPaddingH = ViewUtils.dpToPx(context, 4);
+        mPillSlotPaddingH = ViewUtils.dpToPx(context, 12);
+        mTargetHeightPx = ViewUtils.dpToPx(context, 38);
 
         int iconWidthPx = ViewUtils.dpToPx(context, 34);
 
@@ -181,8 +187,7 @@ public class TopBarView extends FrameLayout {
         tv.setTypeface(isBold ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
         tv.setMaxLines(1);
         tv.setEllipsize(TextUtils.TruncateAt.END);
-        int paddingH = ViewUtils.dpToPx(context, 4);
-        tv.setPadding(paddingH, 0, paddingH, 0);
+        tv.setPadding(mDefaultSlotPaddingH, 0, mDefaultSlotPaddingH, 0);
         tv.setClickable(true);
         tv.setLongClickable(true);
         tv.setFocusable(false);
@@ -209,77 +214,97 @@ public class TopBarView extends FrameLayout {
         }
     }
 
-    public void setSuggestions(List<CharSequence> suggestions, int boldIndex) {
+    public void setSuggestions(final List<CharSequence> suggestions, final int boldIndex) {
         if (isExternalViewActive()) {
             setExternalView(null);
         }
-        clearSuggestions();
+        exitSinglePillModeIfNeeded();
         if (suggestions == null || suggestions.isEmpty()) {
+            clearSlots();
             return;
         }
-        dispatchSuggestions(suggestions, boldIndex);
+        final int count = suggestions.size();
+        final CharSequence s0 = count > 0 ? suggestions.get(0) : null;
+        final CharSequence s1 = count > 1 ? suggestions.get(1) : null;
+        final CharSequence s2 = count > 2 ? suggestions.get(2) : null;
+        setSuggestions(s0, s1, s2, count, boldIndex);
     }
 
-    private void clearSuggestions() {
-        resetSlot(mLeftSlot);
-        mDivider1.setVisibility(View.INVISIBLE);
-        resetSlot(mCenterSlot);
-        mDivider2.setVisibility(View.INVISIBLE);
-        resetSlot(mRightSlot);
-
-        if (mIsSinglePillMode) {
-            mIsSinglePillMode = false;
-            restoreSlotLayoutParams(mLeftSlot);
-            restoreSlotLayoutParams(mCenterSlot);
-            restoreSlotLayoutParams(mRightSlot);
+    public void setSuggestions(final CharSequence s0, final CharSequence s1, final CharSequence s2,
+            final int count, final int boldIndex) {
+        if (isExternalViewActive()) {
+            setExternalView(null);
+        }
+        exitSinglePillModeIfNeeded();
+        if (count <= 0) {
+            clearSlots();
+            return;
+        }
+        if (count >= 3) {
+            bindSlot(mLeftSlot, s0, boldIndex == 0);
+            setDividerVisible(mDivider1, true);
+            bindSlot(mCenterSlot, s1, boldIndex == 1);
+            setDividerVisible(mDivider2, true);
+            bindSlot(mRightSlot, s2, boldIndex == 2);
+        } else if (count == 2) {
+            bindSlot(mLeftSlot, s0, boldIndex == 0);
+            setDividerVisible(mDivider1, true);
+            bindSlot(mCenterSlot, s1, boldIndex == 1);
+            setDividerVisible(mDivider2, false);
+            hideSlot(mRightSlot);
+        } else {
+            hideSlot(mLeftSlot);
+            setDividerVisible(mDivider1, false);
+            bindSlot(mCenterSlot, s0, boldIndex == 0);
+            setDividerVisible(mDivider2, false);
+            hideSlot(mRightSlot);
         }
     }
 
-    private void restoreSlotLayoutParams(TextView slot) {
-        ViewGroup.LayoutParams lp = slot.getLayoutParams();
+    public void clearSuggestions() {
+        if (isExternalViewActive()) {
+            setExternalView(null);
+        }
+        exitSinglePillModeIfNeeded();
+        clearSlots();
+    }
+
+    private void clearSlots() {
+        hideSlot(mLeftSlot);
+        setDividerVisible(mDivider1, false);
+        hideSlot(mCenterSlot);
+        setDividerVisible(mDivider2, false);
+        hideSlot(mRightSlot);
+    }
+
+    private void exitSinglePillModeIfNeeded() {
+        if (!mIsSinglePillMode) {
+            return;
+        }
+        mIsSinglePillMode = false;
+        restoreSlotLayoutParams(mLeftSlot);
+        restoreSlotLayoutParams(mCenterSlot);
+        restoreSlotLayoutParams(mRightSlot);
+
+        mCenterSlot.setCompoundDrawablesRelative(null, null, null, null);
+        mCenterSlot.setCompoundDrawablePadding(0);
+        mCenterSlot.setPadding(mDefaultSlotPaddingH, 0, mDefaultSlotPaddingH, 0);
+        mCenterSlot.setOnClickListener(mSlotClickListener);
+        mCenterSlot.setOnLongClickListener(mSlotLongClickListener);
+    }
+
+    private void restoreSlotLayoutParams(final TextView slot) {
+        final ViewGroup.LayoutParams lp = slot.getLayoutParams();
         if (lp instanceof LinearLayout.LayoutParams) {
-            LinearLayout.LayoutParams llp = (LinearLayout.LayoutParams) lp;
-            llp.width = 0;
-            llp.weight = 1.0f;
-            slot.setLayoutParams(llp);
+            final LinearLayout.LayoutParams llp = (LinearLayout.LayoutParams) lp;
+            if (llp.width != 0 || Float.compare(llp.weight, 1.0f) != 0) {
+                llp.width = 0;
+                llp.weight = 1.0f;
+                slot.setLayoutParams(llp);
+            }
         } else {
             slot.setLayoutParams(new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1.0f));
         }
-    }
-
-    private void dispatchSuggestions(List<CharSequence> suggestions, int boldIndex) {
-        final int count = suggestions.size();
-        if (count >= 3) {
-            renderThreeSuggestions(suggestions, boldIndex);
-        } else if (count == 2) {
-            renderTwoSuggestions(suggestions, boldIndex);
-        } else {
-            renderSingleSuggestion(suggestions, boldIndex == 0);
-        }
-    }
-
-    private void renderThreeSuggestions(List<CharSequence> suggestions, int boldIndex) {
-        bindSlot(mLeftSlot, suggestions.get(0), boldIndex == 0);
-        mDivider1.setVisibility(View.VISIBLE);
-        bindSlot(mCenterSlot, suggestions.get(1), boldIndex == 1);
-        mDivider2.setVisibility(View.VISIBLE);
-        bindSlot(mRightSlot, suggestions.get(2), boldIndex == 2);
-    }
-
-    private void renderTwoSuggestions(List<CharSequence> suggestions, int boldIndex) {
-        bindSlot(mLeftSlot, suggestions.get(0), boldIndex == 0);
-        mDivider1.setVisibility(View.VISIBLE);
-        bindSlot(mCenterSlot, suggestions.get(1), boldIndex == 1);
-        mDivider2.setVisibility(View.INVISIBLE);
-        bindSlot(mRightSlot, null, false);
-    }
-
-    private void renderSingleSuggestion(List<CharSequence> suggestions, boolean isBold) {
-        bindSlot(mLeftSlot, null, false);
-        mDivider1.setVisibility(View.INVISIBLE);
-        bindSlot(mCenterSlot, suggestions.get(0), isBold);
-        mDivider2.setVisibility(View.INVISIBLE);
-        bindSlot(mRightSlot, null, false);
     }
 
     private void setupSingleCenterPillMode() {
@@ -289,17 +314,18 @@ public class TopBarView extends FrameLayout {
         mDivider2.setVisibility(View.GONE);
         mRightSlot.setVisibility(View.GONE);
 
-        ViewGroup.LayoutParams lp = mCenterSlot.getLayoutParams();
+        final ViewGroup.LayoutParams lp = mCenterSlot.getLayoutParams();
         if (lp instanceof LinearLayout.LayoutParams) {
-            LinearLayout.LayoutParams llp = (LinearLayout.LayoutParams) lp;
-            llp.width = LayoutParams.WRAP_CONTENT;
-            llp.weight = 0f;
-            mCenterSlot.setLayoutParams(llp);
+            final LinearLayout.LayoutParams llp = (LinearLayout.LayoutParams) lp;
+            if (llp.width != LayoutParams.WRAP_CONTENT || Float.compare(llp.weight, 0f) != 0) {
+                llp.width = LayoutParams.WRAP_CONTENT;
+                llp.weight = 0f;
+                mCenterSlot.setLayoutParams(llp);
+            }
         } else {
             mCenterSlot.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT));
         }
-        int paddingH = ViewUtils.dpToPx(getContext(), 12);
-        mCenterSlot.setPadding(paddingH, 0, paddingH, 0);
+        mCenterSlot.setPadding(mPillSlotPaddingH, 0, mPillSlotPaddingH, 0);
         mCenterSlot.setVisibility(View.VISIBLE);
         mCenterSlot.setTypeface(Typeface.DEFAULT_BOLD);
         mCenterSlot.setAlpha(1.0f);
@@ -363,39 +389,51 @@ public class TopBarView extends FrameLayout {
         });
     }
 
-    private void resetSlot(TextView slot) {
-        slot.setText("");
-        slot.setCompoundDrawablesRelative(null, null, null, null);
-        slot.setCompoundDrawablePadding(0);
-        int paddingH = ViewUtils.dpToPx(getContext(), 4);
-        slot.setPadding(paddingH, 0, paddingH, 0);
-        slot.setTypeface(Typeface.DEFAULT);
-        slot.setAlpha(0.85f);
-        slot.setVisibility(View.INVISIBLE);
-        slot.setOnClickListener(mSlotClickListener);
-        slot.setOnLongClickListener(mSlotLongClickListener);
-    }
-
-    private void applySlotStyle(TextView slot, boolean isHighlighted) {
-        slot.setTypeface(isHighlighted ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
-        slot.setAlpha(isHighlighted ? 1.0f : 0.85f);
-    }
-
-    private void handleSuggestionClick(CharSequence text) {
-        if (mListener != null) {
-            mListener.onSuggestionClicked(StringUtils.stripEnclosingQuotes(text));
-        }
-    }
-
-    private void bindSlot(TextView slot, final CharSequence text, boolean isHighlighted) {
+    private void bindSlot(final TextView slot, final CharSequence text, final boolean isHighlighted) {
         if (TextUtils.isEmpty(text)) {
-            resetSlot(slot);
+            hideSlot(slot);
             return;
         }
 
-        slot.setText(text);
-        slot.setVisibility(View.VISIBLE);
-        applySlotStyle(slot, isHighlighted);
+        if (!TextUtils.equals(slot.getText(), text)) {
+            slot.setText(text);
+        }
+
+        if (slot.getVisibility() != View.VISIBLE) {
+            slot.setVisibility(View.VISIBLE);
+        }
+
+        final Typeface targetTypeface = isHighlighted ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT;
+        if (slot.getTypeface() != targetTypeface) {
+            slot.setTypeface(targetTypeface);
+        }
+
+        final float targetAlpha = isHighlighted ? 1.0f : 0.85f;
+        if (Float.compare(slot.getAlpha(), targetAlpha) != 0) {
+            slot.setAlpha(targetAlpha);
+        }
+    }
+
+    private void hideSlot(final TextView slot) {
+        if (slot.getVisibility() != View.INVISIBLE) {
+            slot.setVisibility(View.INVISIBLE);
+        }
+        if (slot.getText().length() > 0) {
+            slot.setText("");
+        }
+    }
+
+    private void setDividerVisible(final View divider, final boolean visible) {
+        final int target = visible ? View.VISIBLE : View.INVISIBLE;
+        if (divider.getVisibility() != target) {
+            divider.setVisibility(target);
+        }
+    }
+
+    private void handleSuggestionClick(final CharSequence text) {
+        if (mListener != null) {
+            mListener.onSuggestionClicked(StringUtils.stripEnclosingQuotes(text));
+        }
     }
     
     public void setExternalView(View view) {
@@ -448,8 +486,7 @@ public class TopBarView extends FrameLayout {
     
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        int height = ViewUtils.dpToPx(getContext(), 38);
-        int spec = MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY);
+        int spec = MeasureSpec.makeMeasureSpec(mTargetHeightPx, MeasureSpec.EXACTLY);
         super.onMeasure(widthMeasureSpec, spec);
     }
 }

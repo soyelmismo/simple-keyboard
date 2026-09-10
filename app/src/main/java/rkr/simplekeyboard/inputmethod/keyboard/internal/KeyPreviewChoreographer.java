@@ -19,10 +19,13 @@
 package rkr.simplekeyboard.inputmethod.keyboard.internal;
 
 import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
 import android.content.Context;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewGroup.LayoutParams;
+import android.widget.FrameLayout;
+import android.widget.RelativeLayout;
 
 import java.util.ArrayDeque;
 import java.util.HashMap;
@@ -38,6 +41,8 @@ import rkr.simplekeyboard.inputmethod.latin.utils.ViewLayoutUtils;
  * - how key previews should be shown and dismissed.
  */
 public final class KeyPreviewChoreographer {
+    private static final String TAG = KeyPreviewChoreographer.class.getSimpleName();
+
     // Free {@link KeyPreviewView} pool that can be used for key preview.
     private final ArrayDeque<KeyPreviewView> mFreeKeyPreviewViews = new ArrayDeque<>();
     // Map from {@link Key} to {@link KeyPreviewView} that is currently being displayed as key
@@ -59,15 +64,36 @@ public final class KeyPreviewChoreographer {
             keyPreviewView.setScaleX(1);
             keyPreviewView.setScaleY(1);
             if (keyPreviewView.getParent() == null) {
-                placerView.addView(keyPreviewView, ViewLayoutUtils.newLayoutParam(placerView, 0, 0));
+                addPreviewViewToPlacer(placerView, keyPreviewView);
             }
             return keyPreviewView;
         }
         final Context context = placerView.getContext();
         keyPreviewView = new KeyPreviewView(context, null /* attrs */);
         keyPreviewView.setBackgroundResource(mParams.mPreviewBackgroundResId);
-        placerView.addView(keyPreviewView, ViewLayoutUtils.newLayoutParam(placerView, 0, 0));
+        addPreviewViewToPlacer(placerView, keyPreviewView);
         return keyPreviewView;
+    }
+
+    private void addPreviewViewToPlacer(final ViewGroup placerView, final KeyPreviewView keyPreviewView) {
+        final LayoutParams lp;
+        if (placerView instanceof FrameLayout) {
+            lp = new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+        } else if (placerView instanceof RelativeLayout) {
+            lp = new RelativeLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+        } else if (placerView == null) {
+            Log.w(TAG, "addPreviewViewToPlacer: placerView is null");
+            return;
+        } else {
+            Log.w(TAG, "addPreviewViewToPlacer: unsupported placer type "
+                    + placerView.getClass().getName());
+            return;
+        }
+        placerView.addView(keyPreviewView, lp);
     }
 
     public void deallocate() {
@@ -99,8 +125,14 @@ public final class KeyPreviewChoreographer {
     }
 
     private boolean dismissWithAnimation(final Object tag) {
-        if (tag instanceof KeyPreviewAnimators) {
-            ((KeyPreviewAnimators) tag).startDismiss();
+        if (tag instanceof Animator) {
+            final Animator dismissAnimator = (Animator) tag;
+            // Restart cleanly even if a previous dismiss animation is mid-flight
+            // (e.g. fast typing between keys).
+            if (dismissAnimator.isStarted()) {
+                dismissAnimator.cancel();
+            }
+            dismissAnimator.start();
             return true;
         }
         return false;
@@ -138,7 +170,7 @@ public final class KeyPreviewChoreographer {
         // The key preview is horizontally aligned with the center of the visible part of the
         // parent key. If it doesn't fit in this {@link KeyboardView}, it is moved inward to fit and
         // the left/right background is used if such background is specified.
-        int previewX = key.getX() - (previewWidth - keyWidth) / 2
+        final int previewX = key.getX() - (previewWidth - keyWidth) / 2
                 + CoordinateUtils.x(originCoords);
         // The key preview is placed vertically above the top edge of the parent key with an
         // arbitrary offset.
@@ -147,8 +179,6 @@ public final class KeyPreviewChoreographer {
 
         ViewLayoutUtils.placeViewAt(
                 keyPreviewView, previewX, previewY, previewWidth, previewHeight);
-        //keyPreviewView.setPivotX(previewWidth / 2.0f);
-        //keyPreviewView.setPivotY(previewHeight);
     }
 
     void showKeyPreview(final Key key, final KeyPreviewView keyPreviewView,
@@ -159,33 +189,48 @@ public final class KeyPreviewChoreographer {
             return;
         }
 
-        // Show preview with animation.
-        final Animator dismissAnimator = createDismissAnimator(key, keyPreviewView);
-        final KeyPreviewAnimators animators = new KeyPreviewAnimators(dismissAnimator);
-        keyPreviewView.setTag(animators);
+        // Show preview with animation. Reuse the cached dismiss animator (cloned from the
+        // prototype) so we never inflate XML on the press path.
+        final Animator dismissAnimator = mParams.createDismissAnimator(keyPreviewView);
+        if (dismissAnimator == null) {
+            // Fallback: no animator available, just show.
+            keyPreviewView.setVisibility(View.VISIBLE);
+            mShowingKeyPreviewViews.put(key, keyPreviewView);
+            return;
+        }
+        dismissAnimator.addListener(new DismissListener(key, dismissAnimator));
+        keyPreviewView.setTag(dismissAnimator);
         showKeyPreview(key, keyPreviewView, false /* withAnimation */);
     }
 
-    private Animator createDismissAnimator(final Key key, final KeyPreviewView keyPreviewView) {
-        final Animator dismissAnimator = mParams.createDismissAnimator(keyPreviewView);
-        dismissAnimator.addListener(new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(final Animator animator) {
-                dismissKeyPreview(key, false /* withAnimation */);
+    /**
+     * Listener that triggers the chained dismissal when the dismiss animator finishes.
+     * Each press allocates a tiny inner-class instance; the cost is one vtable dispatch
+     * per anim end, far cheaper than re-inflating the animator XML.
+     */
+    private final class DismissListener implements Animator.AnimatorListener {
+        private final Key mKey;
+        private final Animator mAnimator;
+        DismissListener(final Key key, final Animator animator) {
+            mKey = key;
+            mAnimator = animator;
+        }
+        @Override
+        public void onAnimationStart(final Animator animation) {}
+        @Override
+        public void onAnimationEnd(final Animator animation) {
+            // Guard against late end() callbacks from an animator that has been replaced
+            // by a newer press on the same pooled view (fast typing). If the view's tag has
+            // moved on, the newer animator owns the dismissal.
+            final KeyPreviewView view = mShowingKeyPreviewViews.get(mKey);
+            if (view == null || view.getTag() != mAnimator) {
+                return;
             }
-        });
-        return dismissAnimator;
-    }
-
-    private static class KeyPreviewAnimators extends AnimatorListenerAdapter {
-        private final Animator mDismissAnimator;
-
-        public KeyPreviewAnimators(final Animator dismissAnimator) {
-            mDismissAnimator = dismissAnimator;
+            dismissKeyPreview(mKey, false /* withAnimation */);
         }
-
-        public void startDismiss() {
-            mDismissAnimator.start();
-        }
+        @Override
+        public void onAnimationCancel(final Animator animation) {}
+        @Override
+        public void onAnimationRepeat(final Animator animation) {}
     }
 }

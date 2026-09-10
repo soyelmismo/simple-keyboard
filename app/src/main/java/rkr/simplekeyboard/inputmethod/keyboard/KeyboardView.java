@@ -109,6 +109,12 @@ public class KeyboardView extends View {
     private final HashSet<Key> mInvalidatedKeys = new HashSet<>();
     /** The working rectangle for clipping */
     private final Rect mClipRect = new Rect();
+    /** Union of invalidated key bounds (including background padding) for partial blits. */
+    private final Rect mDirtyRect = new Rect();
+    /** Scratch rects reused for the partial offscreen blit to avoid per-frame allocations. */
+    private final Rect mSrcRect = new Rect();
+    private final Rect mDstRect = new Rect();
+    private boolean mDirtyRectValid;
     private final Paint mScratchLabelPaint = new Paint();
     /** The keyboard bitmap buffer for faster updates */
     private Bitmap mOffscreenBuffer;
@@ -241,10 +247,23 @@ public class KeyboardView extends View {
     }
 
     private void onDrawSoftware(final Canvas canvas) {
+        // Capture the redraw scope BEFORE onDrawKeyboard clears the dirty flags,
+        // so we still know whether the offscreen buffer was just regenerated
+        // with the full keyboard (which does not populate mDirtyRect).
+        final boolean fullRedraw = mInvalidateAllKeys || mInvalidatedKeys.isEmpty();
         if (needsSoftwareBufferUpdate()) {
             prepareOffscreenBuffer();
+            if (mOffscreenBuffer == null) {
+                return;
+            }
             onDrawKeyboard(mOffscreenCanvas);
         }
+        if (mOffscreenBuffer == null) {
+            return;
+        }
+        // The window canvas is double-buffered by the OS; blit the full buffer so
+        // uninvalidated keys from mOffscreenBuffer are always present on screen.
+        // Partial redraw of only dirty keys already happened inside mOffscreenBuffer.
         canvas.drawBitmap(mOffscreenBuffer, 0.0f, 0.0f, null);
     }
 
@@ -295,6 +314,10 @@ public class KeyboardView extends View {
             return;
         }
 
+        // Reset dirty-rect accumulator for this frame. drawAllKeys resets it
+        // again because the whole canvas is now considered dirty.
+        mDirtyRectValid = false;
+
         final Drawable background = getBackground();
         drawKeys(canvas, mPaint, keyboard, background);
 
@@ -304,8 +327,11 @@ public class KeyboardView extends View {
 
     private void drawKeys(final Canvas canvas, final Paint paint, final Keyboard keyboard,
             final Drawable background) {
-        final boolean drawAllKeys = mInvalidateAllKeys || mInvalidatedKeys.isEmpty();
-        if (drawAllKeys || canvas.isHardwareAccelerated()) {
+        // mInvalidateAllKeys or an empty dirty set means "redraw every key".
+        // When hardware accelerated, onDraw records the full DisplayList for the view.
+        final boolean drawAllKeys = mInvalidateAllKeys || mInvalidatedKeys.isEmpty()
+                || canvas.isHardwareAccelerated();
+        if (drawAllKeys) {
             drawAllKeys(canvas, paint, keyboard, background);
         } else {
             drawInvalidatedKeys(canvas, paint, keyboard, background);
@@ -335,18 +361,42 @@ public class KeyboardView extends View {
 
     private void drawSingleInvalidatedKey(final Key key, final Canvas canvas, final Paint paint,
             final Drawable background) {
+        final int x = key.getX() + getPaddingLeft();
+        final int y = key.getY() + getPaddingTop();
+        final int width = key.getWidth();
+        final int height = key.getHeight();
+        // Expand the dirty rect to include the key background's padding so
+        // neighbouring pixels from the previous frame are not left behind.
+        // The key background itself draws at -padding.left/-padding.top with
+        // a wider bgWidth/bgHeight, so it already overlaps the surrounding
+        // padding. We expand the CLEAR region too so the offscreen buffer
+        // pixels that fall outside the drawable's opaque bounds are reset.
+        final Rect padding = mKeyBackgroundPadding;
+        final int dirtyLeft = x - padding.left;
+        final int dirtyTop = y - padding.top;
+        final int dirtyRight = x + width + padding.right;
+        final int dirtyBottom = y + height + padding.bottom;
+        mClipRect.set(dirtyLeft, dirtyTop, dirtyRight, dirtyBottom);
         if (background != null) {
             // Need to redraw key's background on {@link #mOffscreenBuffer}.
-            final int x = key.getX() + getPaddingLeft();
-            final int y = key.getY() + getPaddingTop();
-            mClipRect.set(x, y, x + key.getWidth(), y + key.getHeight());
             canvas.save();
             canvas.clipRect(mClipRect);
             canvas.drawColor(Color.BLACK, PorterDuff.Mode.CLEAR);
             background.draw(canvas);
             canvas.restore();
         }
+        // onDrawKey must run unclipped so the key background's padded drawable
+        // and any label/icon are painted at their natural positions. The
+        // preceding CLEAR + background draw already covered the surrounding
+        // padding region, so visual output is identical to a full redraw.
         onDrawKey(key, canvas, paint);
+        // Accumulate the expanded rect for partial software blits.
+        if (!mDirtyRectValid) {
+            mDirtyRect.set(dirtyLeft, dirtyTop, dirtyRight, dirtyBottom);
+            mDirtyRectValid = true;
+        } else {
+            mDirtyRect.union(dirtyLeft, dirtyTop, dirtyRight, dirtyBottom);
+        }
     }
 
     private void onDrawKey(final Key key, final Canvas canvas,
