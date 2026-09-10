@@ -39,6 +39,7 @@ public final class KeyboardCodesSet {
         NAME_TO_CODE.put("key_delete", Constants.CODE_DELETE);
         NAME_TO_CODE.put("key_settings", Constants.CODE_SETTINGS);
         NAME_TO_CODE.put("key_paste", Constants.CODE_PASTE);
+        NAME_TO_CODE.put("key_emoji", Constants.CODE_EMOJI);
         NAME_TO_CODE.put("key_action_next", Constants.CODE_ACTION_NEXT);
         NAME_TO_CODE.put("key_action_previous", Constants.CODE_ACTION_PREVIOUS);
         NAME_TO_CODE.put("key_shift_enter", Constants.CODE_SHIFT_ENTER);

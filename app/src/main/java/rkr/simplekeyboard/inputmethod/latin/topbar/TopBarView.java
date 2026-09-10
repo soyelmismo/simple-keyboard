@@ -30,6 +30,7 @@ public class TopBarView extends FrameLayout {
 
     private LinearLayout mNormalModeContainer;
     private ImageView mExpandButton;
+    private View mRightSpacer;
     private LinearLayout mSuggestionsContainer;
     private boolean mIsExternalActive;
     private boolean mIsSinglePillMode;
@@ -122,9 +123,9 @@ public class TopBarView extends FrameLayout {
         mSuggestionsContainer.addView(mRightSlot);
         mNormalModeContainer.addView(mSuggestionsContainer);
 
-        View rightSpacer = new View(context);
-        rightSpacer.setLayoutParams(new LinearLayout.LayoutParams(iconWidthPx, LayoutParams.MATCH_PARENT));
-        mNormalModeContainer.addView(rightSpacer);
+        mRightSpacer = new View(context);
+        mRightSpacer.setLayoutParams(new LinearLayout.LayoutParams(iconWidthPx, LayoutParams.MATCH_PARENT));
+        mNormalModeContainer.addView(mRightSpacer);
 
         addView(mNormalModeContainer);
 
@@ -211,6 +212,19 @@ public class TopBarView extends FrameLayout {
     public void closeToolTray() {
         if (mCurrentMode != MODE_NORMAL) {
             setMode(MODE_NORMAL);
+        }
+    }
+
+    public void setExpandButtonVisible(boolean visible) {
+        if (!visible && mCurrentMode == MODE_TOOL_TRAY) {
+            setMode(MODE_NORMAL);
+        }
+        final int visibility = visible ? View.VISIBLE : View.GONE;
+        if (mExpandButton != null) {
+            mExpandButton.setVisibility(visibility);
+        }
+        if (mRightSpacer != null) {
+            mRightSpacer.setVisibility(visibility);
         }
     }
 

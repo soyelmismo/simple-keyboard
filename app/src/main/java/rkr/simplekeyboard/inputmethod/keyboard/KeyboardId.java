@@ -92,6 +92,7 @@ public final class KeyboardId {
     public final String mCustomActionLabel;
     public final boolean mShowMoreKeys;
     public final boolean mShowNumberRow;
+    public final boolean mShowTopBar;
 
     private final int mHashCode;
 
@@ -110,6 +111,7 @@ public final class KeyboardId {
                 ? mEditorInfo.actionLabel.toString() : null;
         mShowMoreKeys = params.mShowMoreKeys;
         mShowNumberRow = params.mShowNumberRow;
+        mShowTopBar = params.mShowTopBar;
 
         mHashCode = computeHashCode(this);
     }
@@ -132,7 +134,8 @@ public final class KeyboardId {
                 id.mSubtype,
                 id.mThemeId,
                 id.mShowNumberRow,
-                id.mShowMoreKeys
+                id.mShowMoreKeys,
+                id.mShowTopBar
         });
     }
 
@@ -185,7 +188,8 @@ public final class KeyboardId {
         return other.mClobberSettingsKey == mClobberSettingsKey
                 && other.mLanguageSwitchKeyEnabled == mLanguageSwitchKeyEnabled
                 && other.mShowNumberRow == mShowNumberRow
-                && other.mShowMoreKeys == mShowMoreKeys;
+                && other.mShowMoreKeys == mShowMoreKeys
+                && other.mShowTopBar == mShowTopBar;
     }
 
     private static boolean isAlphabetKeyboard(final int elementId) {

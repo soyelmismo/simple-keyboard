@@ -180,7 +180,14 @@ public final class InputLogic {
         sFunctionalHandlers.put(Constants.CODE_SYMBOL_SHIFT, (logic, event, tx) -> {});
         sFunctionalHandlers.put(Constants.CODE_SWITCH_ALPHA_SYMBOL, (logic, event, tx) -> {});
         sFunctionalHandlers.put(Constants.CODE_SETTINGS, (logic, event, tx) -> logic.onSettingsKeyPressed());
-        sFunctionalHandlers.put(Constants.CODE_PASTE, (logic, event, tx) -> logic.mConnection.pasteClipboard());
+        sFunctionalHandlers.put(Constants.CODE_PASTE, (logic, event, tx) -> {
+            if (tx.mSettingsValues.mClipboardEnabled) {
+                logic.mLatinIME.showClipboardHistory();
+            } else {
+                logic.mConnection.pasteClipboard();
+            }
+        });
+        sFunctionalHandlers.put(Constants.CODE_EMOJI, (logic, event, tx) -> logic.mLatinIME.showEmojiView());
         sFunctionalHandlers.put(Constants.CODE_ACTION_NEXT, (logic, event, tx) -> logic.performEditorAction(EditorInfo.IME_ACTION_NEXT));
         sFunctionalHandlers.put(Constants.CODE_ACTION_PREVIOUS, (logic, event, tx) -> logic.performEditorAction(EditorInfo.IME_ACTION_PREVIOUS));
         sFunctionalHandlers.put(Constants.CODE_LANGUAGE_SWITCH, (logic, event, tx) -> logic.handleLanguageSwitchKey());

@@ -17,6 +17,11 @@
             android:defaultValue="false" />
 
         <SwitchPreferenceCompat
+            android:key="pref_show_top_bar"
+            android:title="@string/show_top_bar"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
             android:key="pref_show_special_chars"
             android:title="@string/show_special_chars"
             android:defaultValue="true" />

@@ -48,6 +48,7 @@ public class SettingsValues {
     public final int mKeyLongpressTimeout;
     public final boolean mShowSpecialChars;
     public final boolean mShowNumberRow;
+    public final boolean mShowTopBar;
     public final boolean mSpaceSwipeEnabled;
     public final boolean mDeleteSwipeEnabled;
     public final float mSwipeSensitivity;
@@ -105,6 +106,7 @@ public class SettingsValues {
         mClipboardMaxClips = 50;
         mShowSpecialChars = true;
         mShowNumberRow = false;
+        mShowTopBar = true;
         mSpaceSwipeEnabled = false;
         mDeleteSwipeEnabled = false;
         mSwipeSensitivity = 1.0f;
@@ -153,6 +155,7 @@ public class SettingsValues {
         mClipboardMaxClips = Settings.readClipboardMaxClips(prefs);
         mShowSpecialChars = prefs.getBoolean(Settings.PREF_SHOW_SPECIAL_CHARS, true);
         mShowNumberRow = prefs.getBoolean(Settings.PREF_SHOW_NUMBER_ROW, false);
+        mShowTopBar = prefs.getBoolean(Settings.PREF_SHOW_TOP_BAR, true);
         mSpaceSwipeEnabled = prefs.getBoolean(Settings.PREF_SPACE_SWIPE, false);
         mDeleteSwipeEnabled = prefs.getBoolean(Settings.PREF_DELETE_SWIPE, false);
         mSwipeSensitivity = Settings.readSwipeSensitivity(prefs);
