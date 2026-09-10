@@ -73,6 +73,7 @@
     <string name="disable_landscape_fullscreen">Desactivar pantalla completa en horizontal</string>
     <string name="disable_landscape_fullscreen_summary">No expandir el teclado a pantalla completa en modo horizontal</string>
     <string name="show_number_row">Mostrar fila numérica separada</string>
+    <string name="show_top_bar">Mostrar tres puntos de la barra superior</string>
     <string name="space_swipe">Deslizar la barra espaciadora para mover el cursor</string>
     <string name="delete_swipe">Deslizar para eliminar</string>
     <string name="swipe_sensitivity">Sensibilidad de deslizamiento</string>

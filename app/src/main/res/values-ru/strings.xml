@@ -73,6 +73,7 @@
     <string name="disable_landscape_fullscreen">Отключить полноэкранный режим в ландшафтной ориентации</string>
     <string name="disable_landscape_fullscreen_summary">Не разворачивать клавиатуру на весь экран в горизонтальном режиме</string>
     <string name="show_number_row">Отдельный цифровой ряд</string>
+    <string name="show_top_bar">Показывать три точки на верхней панели</string>
     <string name="space_swipe">Свайп по пробелу для перемещения курсора</string>
     <string name="delete_swipe">Свайп для удаления</string>
     <string name="swipe_sensitivity">Чувствительность свайпа</string>

@@ -546,6 +546,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             mEmojiPalettesView = mInputView.findViewById(rkr.simplekeyboard.inputmethod.R.id.emoji_palettes_view);
 
             if (mTopBarView != null) {
+                mTopBarView.setExpandButtonVisible(mSettings.getCurrent().mShowTopBar);
                 mTopBarView.setListener(new TopBarListener() {
                     @Override
                     public void onSettingsClicked() {
@@ -909,6 +910,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             mClipboardHistoryManager.updateCurrentClip();
         }
         if (mTopBarView != null) {
+            mTopBarView.setExpandButtonVisible(mSettings.getCurrent().mShowTopBar);
             mTopBarView.setLanguageButtonVisible(shouldShowLanguageSwitchKey());
             updateSuggestions();
         }

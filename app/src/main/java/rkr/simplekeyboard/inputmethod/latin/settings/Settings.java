@@ -73,6 +73,7 @@ public final class Settings extends BroadcastReceiver implements SharedPreferenc
     public static final String PREF_KEY_PREVIEW_LINGER_TIMEOUT = "pref_key_preview_linger_timeout";
     public static final String PREF_SHOW_SPECIAL_CHARS = "pref_show_special_chars";
     public static final String PREF_SHOW_NUMBER_ROW = "pref_show_number_row";
+    public static final String PREF_SHOW_TOP_BAR = "pref_show_top_bar";
     public static final String PREF_SPACE_SWIPE = "pref_space_swipe";
     public static final String PREF_DELETE_SWIPE = "pref_delete_swipe";
     public static final String PREF_SWIPE_SENSITIVITY = "pref_swipe_sensitivity";
@@ -255,6 +256,7 @@ public final class Settings extends BroadcastReceiver implements SharedPreferenc
         map.put(PREF_AUTO_PERIOD, boolApplier);
         map.put(PREF_AUTO_STRIP_PUNCTUATION_SPACE, boolApplier);
         map.put(PREF_SHOW_NUMBER_ROW, boolApplier);
+        map.put(PREF_SHOW_TOP_BAR, boolApplier);
         map.put(PREF_SHOW_SPECIAL_CHARS, boolApplier);
         map.put(PREF_SHOW_LANGUAGE_SWITCH_KEY, boolApplier);
         map.put(PREF_SHOW_LANGUAGE_ON_SPACEBAR, boolApplier);

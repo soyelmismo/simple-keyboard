@@ -21,7 +21,20 @@
 <merge
     xmlns:latin="http://schemas.android.com/apk/res-auto"
 >
-    <key-style
-        latin:styleName="settingsMoreKeysStyle"
-        latin:backgroundType="functional" />
+    <switch>
+        <case
+            latin:showTopBar="false"
+        >
+            <key-style
+                latin:styleName="settingsMoreKeysStyle"
+                latin:keyLabelFlags="hasPopupHint"
+                latin:additionalMoreKeys="!text/keyspec_settings"
+                latin:backgroundType="functional" />
+        </case>
+        <default>
+            <key-style
+                latin:styleName="settingsMoreKeysStyle"
+                latin:backgroundType="functional" />
+        </default>
+    </switch>
 </merge>

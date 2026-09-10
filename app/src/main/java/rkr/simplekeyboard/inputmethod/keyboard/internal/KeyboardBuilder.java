@@ -747,7 +747,10 @@ public class KeyboardBuilder<KP extends KeyboardParams> {
         if (!matchBoolean(caseAttr, R.styleable.Keyboard_Case_showExtraChars, id.mShowMoreKeys)) {
             return false;
         }
-        return matchBoolean(caseAttr, R.styleable.Keyboard_Case_showNumberRow, id.mShowNumberRow);
+        if (!matchBoolean(caseAttr, R.styleable.Keyboard_Case_showNumberRow, id.mShowNumberRow)) {
+            return false;
+        }
+        return matchBoolean(caseAttr, R.styleable.Keyboard_Case_showTopBar, id.mShowTopBar);
     }
 
     private static boolean matchLocale(final TypedArray caseAttr, final Locale locale) {
