@@ -80,11 +80,6 @@ def translatedLocales = []
             if (matcher.matches()) translatedLocales << matcher.group(1)
         }
     }
-    if (new File(dir, "strings.xml").isFile()) {
-        def matcher = localeDirPattern.matcher(dir.name)
-        if (matcher.matches()) translatedLocales << matcher.group(1)
-    }
-}
 
 android {
     ndkVersion "29.0.14206865"
