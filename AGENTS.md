@@ -19,7 +19,7 @@ Reglas de rendimiento y estabilidad para este repositorio:
 - **Itera directo**: No uses `for (int i = 0; i < MAX; i++)` con colecciones dinámicas o dispersas. Itera sobre los elementos activos.
 - **Usa tags reales**: Registra logs con el `TAG` de la clase o `NombreClase.class.getSimpleName()`. No inventes tags como `"SlopSweep"` o `"AIFix"`.
 - **Cero código muerto y redundancia**: Revisa la implementación actual y el código nuevo antes de hacer commit o PR. Busca métodos sin invocar, constantes huérfanas, ramas inalcanzables y lógica repetida. Extrae bloques comunes y elimina restos no utilizados.
-- **PRs atómicos**: Envía un PR por bug o característica con el diff mínimo. Separa los cambios cosméticos de las correcciones funcionales.
+- **Cambios atómicos**: Un PR (o un commit directo a `master`, si tienes acceso de push) por bug o característica con el diff mínimo. Separa los cambios cosméticos de las correcciones funcionales. El acceso de push no requiere revisión previa: los colaboradores de confianza pueden commitear directamente.
 
 ## 4. Compatibilidad y Pruebas
 - **Soporte para `TYPE_NULL`**: Si el editor reporta `InputType.TYPE_NULL`, despacha los caracteres mediante eventos físicos (`sendKeyChar` o `sendDownUpKeyEvent`).

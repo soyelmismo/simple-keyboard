@@ -12,11 +12,13 @@ Requirements and build commands are listed in [README.md](README.md#build-instru
 
 ## Workflow
 
-Development happens in short branches inside the `kveld9` fork. Integration into `soyelmismo/simple-keyboard` is done exclusively through atomic pull requests against its `master` branch. Never push directly to the upstream repository.
+Contributors with push access to `soyelmismo/simple-keyboard` are trusted: they may commit and push directly to `master` (or any branch) whenever they prefer, with no pull request required. The repository ruleset does not block direct pushes; push access plus the bypass actor grant is enough.
 
-1. Open an issue first for features or behavior changes, so the approach can be agreed before you write code. Translations and small fixes can go straight to a pull request.
-2. Create a short branch from `master` in the fork.
-3. Keep each pull request to one bug or feature with the minimal diff. Separate cosmetic or formatting changes from functional fixes, and fill in the pull request template (including the verification command).
+Pull requests remain the default path for outside contributions and for changes that benefit from CI and review before landing:
+
+1. Open an issue first for features or behavior changes, so the approach can be agreed before you write code. Translations and small fixes can go straight to a pull request, and trusted collaborators can commit them directly.
+2. Create a short branch from `master` (in your fork for outside contributors, or directly in the repository for collaborators with push access).
+3. Keep each change to one bug or feature with the minimal diff. Separate cosmetic or formatting changes from functional fixes, and fill in the pull request template (including the verification command) when opening a pull request.
 4. Write commit messages in [Conventional Commits](https://www.conventionalcommits.org/) format: `feat(scope): ...`, `fix(scope): ...`, `docs: ...`. Releases are versioned from these prefixes (`feat!` or `BREAKING CHANGE` bumps major, `feat` bumps minor, `fix` and others bump patch).
 
 ## Checks
