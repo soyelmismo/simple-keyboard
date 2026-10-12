@@ -115,6 +115,8 @@
     <string name="disable_landscape_fullscreen_summary">Do not expand keyboard to full screen in landscape mode</string>
     <string name="show_number_row">Show separate number row</string>
     <string name="show_top_bar">Show three dots in top bar</string>
+    <string name="show_suggestion_bar">Show suggestion bar</string>
+    <string name="show_suggestion_bar_summary">Show suggestion and toolbar strip above the keyboard</string>
     <string name="space_swipe">Space swipe cursor move</string>
     <string name="delete_swipe">Delete swipe</string>
     <string name="swipe_sensitivity">Swipe sensitivity</string>

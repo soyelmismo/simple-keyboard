@@ -131,6 +131,7 @@ public final class BackupHelper {
         map.put(Settings.PREF_SHOW_SPECIAL_CHARS, PrefType.BOOLEAN);
         map.put(Settings.PREF_SHOW_NUMBER_ROW, PrefType.BOOLEAN);
         map.put(Settings.PREF_SHOW_TOP_BAR, PrefType.BOOLEAN);
+        map.put(Settings.PREF_SHOW_SUGGESTION_BAR, PrefType.BOOLEAN);
         map.put(Settings.PREF_SPACE_SWIPE, PrefType.BOOLEAN);
         map.put(Settings.PREF_DELETE_SWIPE, PrefType.BOOLEAN);
         map.put(Settings.PREF_DISABLE_LANDSCAPE_FULLSCREEN, PrefType.BOOLEAN);

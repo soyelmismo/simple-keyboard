@@ -205,6 +205,10 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             case MSG_UPDATE_SUGGESTIONS:
                 final SuggestionsPayload payload = (SuggestionsPayload) msg.obj;
                 if (payload != null && latinIme.mTopBarView != null) {
+                    final SettingsValues currentSettings = latinIme.mSettings.getCurrent();
+                    if (currentSettings == null || !currentSettings.mShowSuggestionBar) {
+                        break;
+                    }
                     if (payload.seq == latinIme.mSuggestionSeq.get()) {
                         latinIme.mTopBarView.setSuggestions(
                                 payload.s0, payload.s1, payload.s2, payload.count, payload.boldIndex);
@@ -532,6 +536,24 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
 
     private rkr.simplekeyboard.inputmethod.latin.utils.InsetsOutlineProvider mInsetsUpdater;
 
+    private void updateTopBarVisibility() {
+        if (mTopBarView == null) {
+            return;
+        }
+        final SettingsValues currentSettings = mSettings.getCurrent();
+        final boolean showSuggestionBar = currentSettings != null && currentSettings.mShowSuggestionBar;
+        if (showSuggestionBar) {
+            mTopBarView.setVisibility(View.VISIBLE);
+            mTopBarView.setExpandButtonVisible(currentSettings.mShowTopBar);
+        } else {
+            mTopBarView.setVisibility(View.GONE);
+            mTopBarView.closeToolTray();
+            if (mTopBarView.isExternalViewActive()) {
+                mTopBarView.setExternalView(null);
+            }
+        }
+    }
+
     @Override
     public void setInputView(final View view) {
         super.setInputView(view);
@@ -546,7 +568,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             mEmojiPalettesView = mInputView.findViewById(rkr.simplekeyboard.inputmethod.R.id.emoji_palettes_view);
 
             if (mTopBarView != null) {
-                mTopBarView.setExpandButtonVisible(mSettings.getCurrent().mShowTopBar);
+                updateTopBarVisibility();
                 mTopBarView.setListener(new TopBarListener() {
                     @Override
                     public void onSettingsClicked() {
@@ -737,8 +759,17 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         if (secondaryView != null && secondaryView.getVisibility() == View.VISIBLE) {
             secondaryView.setVisibility(View.GONE);
             if (mTopBarView != null) {
-                mTopBarView.setVisibility(View.VISIBLE);
-                mTopBarView.setMode(TopBarView.MODE_NORMAL);
+                final SettingsValues currentSettings = mSettings.getCurrent();
+                if (currentSettings != null && currentSettings.mShowSuggestionBar) {
+                    mTopBarView.setVisibility(View.VISIBLE);
+                    mTopBarView.setMode(TopBarView.MODE_NORMAL);
+                } else {
+                    mTopBarView.setVisibility(View.GONE);
+                    mTopBarView.closeToolTray();
+                    if (mTopBarView.isExternalViewActive()) {
+                        mTopBarView.setExternalView(null);
+                    }
+                }
             }
             final View keyboardView = mKeyboardSwitcher.getMainKeyboardView();
             if (keyboardView != null) {
@@ -910,7 +941,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             mClipboardHistoryManager.updateCurrentClip();
         }
         if (mTopBarView != null) {
-            mTopBarView.setExpandButtonVisible(mSettings.getCurrent().mShowTopBar);
+            updateTopBarVisibility();
             mTopBarView.setLanguageButtonVisible(shouldShowLanguageSwitchKey());
             updateSuggestions();
         }
@@ -948,6 +979,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                 mClipboardHistoryManager.updateCurrentClip();
             }
             if (mTopBarView != null) {
+                updateTopBarVisibility();
                 updateSuggestions();
             }
         }

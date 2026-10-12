@@ -27,6 +27,12 @@
             app:useSimpleSummaryProvider="true"
             app:widgetLayout="@layout/preference_chevron" />
 
+        <SwitchPreferenceCompat
+            android:key="pref_show_suggestion_bar"
+            android:title="@string/show_suggestion_bar"
+            android:summary="@string/show_suggestion_bar_summary"
+            android:defaultValue="true" />
+
     </PreferenceCategory>
 
     <PreferenceCategory

@@ -90,6 +90,12 @@
         android:defaultValue="300" />
     <!-- settings_screen_appearance -->
     <restriction
+        android:key="pref_show_suggestion_bar"
+        android:title="@string/show_suggestion_bar"
+        android:restrictionType="bool"
+        android:description="@string/show_suggestion_bar_summary"
+        android:defaultValue="true" />
+    <restriction
         android:key="screen_theme"
         android:title="@string/settings_screen_theme"
         android:restrictionType="choice"
